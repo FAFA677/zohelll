@@ -4,348 +4,286 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hell Zoo VR - Quest Support</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Добавляем VRButton для поддержки Quest и других гарнитур -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/VRButton.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
-        #ui-layer {
-            position: absolute; top: 20px; left: 20px; color: #ff0000;
-            text-shadow: 2px 2px #000; pointer-events: none; z-index: 10;
-        }
-        #msg-box {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-            background: rgba(50, 0, 0, 0.8); color: white; padding: 15px;
-            border: 2px solid #ff0000; display: none; text-align: center;
+        body { margin: 0; overflow: hidden; background: #000; }
+        #vr-ui {
+            position: absolute; top: 10px; left: 10px; z-index: 10;
+            color: white; font-family: monospace; pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div id="ui-layer">
-        <h1 id="money-display">Деньги: 0</h1>
-        <div id="belt-status">Пояс: [Пусто] [Пусто] [Пусто] [Пусто]</div>
-        <div id="stats-display">HP: 100 | Патроны: 0</div>
-    </div>
-    <div id="msg-box"></div>
 
-    <script>
-        // --- Глобальные переменные и Конфигурация ---
-        let scene, camera, renderer, clock;
-        let controller1, controller2;
-        let player = {
-            hp: 100,
-            money: 0,
-            belt: [null, null, null, null],
-            activeItemIndex: 0,
-            isDead: false
-        };
+<a-scene 
+    renderer="antialias: true; colorManagement: true;"
+    physics="debug: false">
+    
+    <!-- Assets -->
+    <a-assets>
+        <!-- Звуки и текстуры можно добавить здесь -->
+    </a-assets>
 
-        const MONSTERS_DATA = [
-            { id: 1, name: "Flesh", cost: 250, timer: 300, isEscaped: false },
-            { id: 2, name: "mu-trap", cost: 250, timer: 300, isEscaped: false },
-            { id: 3, name: "Blob", cost: 250, timer: 300, isEscaped: false },
-            { id: 4, name: "Mega-Flesh", cost: 250, timer: 300, isEscaped: false },
-            { id: 5, name: "Mimic-Wood", cost: 250, timer: 300, isEscaped: false },
-            { id: 6, name: "Shark-Octo", cost: 250, timer: 300, isEscaped: false },
-            { id: 7, name: "Small-Squid", cost: 250, timer: 300, isEscaped: false },
-            { id: 8, name: "Blood-Man", cost: 250, timer: 300, isEscaped: false }
-        ];
+    <!-- Environment: Hell Island -->
+    <a-entity environment="preset: volcano; seed: 42; groundColor: #300; dressingAmount: 50; dressingColor: #500; grid: none;"></a-entity>
+    
+    <!-- Lava Ocean -->
+    <a-ocean position="0 -1 0" width="200" depth="200" density="50" color="#ff4500" speed="2"></a-ocean>
 
-        const WEAPONS = {
-            'dagger': { name: 'Кинжал', damage: 20, durability: 50, price: 0, type: 'melee' },
-            'sword': { name: 'Меч', damage: 35, durability: 50, price: 250, type: 'melee' },
-            'katana': { name: 'Катана', damage: 45, durability: 50, price: 350, type: 'melee' },
-            'saber': { name: 'Сабля', damage: 55, durability: 50, price: 450, type: 'melee' },
-            'heavy_sword': { name: 'Тяжелый меч', damage: 75, durability: 50, price: 550, type: 'melee' },
-            'double_barrel': { name: 'Двустволка', damage: 10, ammo: 8, price: 355, type: 'ranged' },
-            'beretta': { name: 'Beretta', damage: 7, ammo: 8, price: 250, type: 'ranged' },
-            'shotgun': { name: 'Дробовик', damage: 25, ammo: 8, price: 700, type: 'ranged' },
-            'grenade': { name: 'Граната', damage: 30, price: 50, type: 'explosive' }
-        };
+    <!-- Player with Wrist Watch and Belt -->
+    <a-entity id="rig" position="0 0 10">
+        <a-camera id="camera" wasd-controls look-controls>
+            <!-- Wrist Watch (attached to camera for simplicity, but logically on hand) -->
+            <a-entity id="watch" position="-0.3 -0.2 -0.5" rotation="0 20 0">
+                <a-plane width="0.15" height="0.1" color="#222" opacity="0.8">
+                    <a-text id="watch-stats" value="HP: 100\nAmmo: 0\n$: 0" align="center" width="0.6" position="0 0 0.01"></a-text>
+                </a-plane>
+            </a-entity>
+            <a-cursor fuse="false" raycaster="objects: .interactable"></a-cursor>
+        </a-camera>
 
-        const ENEMY_TYPES = [
-            { name: 'Зомби', hp: 100, reward: 50 },
-            { name: 'Титан', hp: 150, reward: 120 },
-            { name: 'Чертёнок', hp: 10, reward: 10 }
-        ];
+        <!-- Belt Inventory (4 slots) -->
+        <a-entity id="belt" position="0 0.8 0">
+            <a-ring color="#444" radius-inner="0.3" radius-outer="0.4" rotation="-90 0 0"></a-ring>
+            <a-entity class="slot" id="slot-1" position="0.5 0 0" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-2" position="-0.5 0 0" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-3" position="0 0 0.5" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-4" position="0 0 -0.5" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
+        </a-entity>
 
-        let enemies = [];
-        let monsterCages = [];
-        const tempVec = new THREE.Vector3();
+        <!-- Controllers -->
+        <a-entity laser-controls="hand: left" raycaster="objects: .interactable; far: 3"></a-entity>
+        <a-entity laser-controls="hand: right" raycaster="objects: .interactable; far: 3" id="right-hand"></a-entity>
+    </a-entity>
 
-        window.onload = function() {
-            init();
-            animate();
-            setupInitialGameState();
-        };
+    <!-- THE ZOO GATES -->
+    <a-box position="0 1.5 -5" width="10" height="3" depth="0.2" color="#4a0000" static-body></a-box>
 
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a0505);
-            scene.fog = new THREE.FogExp2(0x1a0505, 0.05);
+    <!-- MONSTER CELLS -->
+    <!-- 1: Flesh -->
+    <a-entity position="-10 0 -10">
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
+        <a-text value="FLESH" position="0 4.2 0" align="center"></a-text>
+        <a-entity id="monster-flesh" class="interactable" position="0 0.5 0">
+            <!-- Simplified geometry for Flesh -->
+            <a-sphere radius="0.4" color="red" scale="1.2 0.8 1.5"></a-sphere>
+            <a-sphere position="0 0.5 0.3" radius="0.3" color="pink"></a-sphere> <!-- Oval head -->
+            <a-entity id="eyes" position="0 0.6 0.5">
+                <a-sphere radius="0.05" color="black" position="-0.1 0 0"></a-sphere>
+                <a-sphere radius="0.05" color="black" position="0.1 0 0"></a-sphere>
+                <a-sphere radius="0.05" color="black" position="0 0.1 0"></a-sphere>
+            </a-entity>
+        </a-entity>
+    </a-entity>
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.6, 5);
+    <!-- 2: Mu-Trap -->
+    <a-entity position="-5 0 -10">
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
+        <a-text value="MU-TRAP" position="0 4.2 0" align="center"></a-text>
+        <a-entity id="monster-mu" position="0 1 0">
+            <a-cylinder radius="0.3" height="1.5" material="src: url(https://i.imgur.com/uVYR0y8.jpeg);"></a-cylinder> <!-- Cow pattern -->
+            <a-sphere position="0 0.8 0" radius="0.25" color="#7d2626"></a-sphere> <!-- Torn face -->
+        </a-entity>
+    </a-entity>
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
+    <!-- 3: Blob -->
+    <a-entity position="0 0 -10">
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
+        <a-text value="BLOB" position="0 4.2 0" align="center"></a-text>
+        <a-sphere id="monster-blob" position="0 0.5 0" radius="0.8" color="yellow">
+            <a-box position="0 0 0.6" width="0.6" height="0.2" depth="0.1" color="black"></a-box> <!-- Mouth -->
+            <a-entity position="-0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
+            <a-entity position="0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
+        </a-sphere>
+    </a-entity>
 
-            // Кнопка VR для Quest
-            document.body.appendChild(VRButton.createButton(renderer));
+    <!-- Add more cages similarly for 4, 5, 6, 7, 8 -->
+    <!-- Warehouse for Meat -->
+    <a-entity position="10 0 0">
+        <a-box width="3" height="2" depth="3" color="#333"></a-box>
+        <a-text value="WAREHOUSE" position="0 2.5 0" align="center"></a-text>
+        <a-box class="interactable" id="meat-source" position="0 1 0" width="0.5" height="0.3" depth="0.5" color="red" 
+               onclick="grabMeat()"></a-box>
+    </a-entity>
 
-            // Контроллеры для Quest
-            controller1 = renderer.xr.getController(0);
-            controller1.addEventListener('select', onSelect);
-            scene.add(controller1);
+    <!-- Weapon Shop -->
+    <a-entity position="-10 0 0">
+        <a-box width="4" height="3" depth="3" color="#1a1a1a"></a-box>
+        <a-text value="SHOP (IMP)" position="0 3.5 0" align="center"></a-text>
+        <!-- The Imp Trader -->
+        <a-entity id="imp-trader" position="0 1 1">
+            <a-sphere radius="0.4" color="black"></a-sphere>
+            <a-cone radius-bottom="0.4" height="1.2" color="#111" position="0 -0.5 0"></a-cone>
+        </a-entity>
+        <!-- Buying Interface -->
+        <a-entity position="0 1.5 1.6" id="shop-ui">
+            <a-plane width="2" height="1.5" color="#444">
+                <a-text value="Kinzhal: Starter\nMech: 250\nKatana: 350\nBeretta: 250\nDouble: 355" 
+                        position="-0.9 0 0.01" width="1.8" color="white"></a-text>
+            </a-plane>
+        </a-entity>
+    </a-entity>
 
-            controller2 = renderer.xr.getController(1);
-            controller2.addEventListener('select', onSelect);
-            scene.add(controller2);
+    <!-- Fishing area -->
+    <a-entity position="0 0 20">
+        <a-text value="LAVA FISHING" position="0 2 0" align="center"></a-text>
+        <a-cylinder radius="2" height="0.1" color="#222" position="0 0 0"></a-cylinder>
+        <a-entity id="fishing-rod" class="interactable" position="0 0.5 0" geometry="primitive: cylinder; radius: 0.02; height: 2" material="color: brown" rotation="45 0 0"></a-entity>
+    </a-entity>
 
-            // Визуализация контроллеров (лучи)
-            const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
-            const line = new THREE.Line(geometry);
-            line.name = 'line';
-            line.scale.z = 5;
-            controller1.add(line.clone());
-            controller2.add(line.clone());
+</a-scene>
 
-            // Освещение
-            scene.add(new THREE.AmbientLight(0x404040, 0.5));
-            const redLight = new THREE.PointLight(0xff0000, 1, 100);
-            redLight.position.set(0, 10, 0);
-            scene.add(redLight);
+<script>
+    // Game State
+    let state = {
+        hp: 100,
+        money: 0,
+        ammo: 8,
+        inventory: [null, null, null, null],
+        weapon: { name: 'Kinzhal', damage: 20, durability: 50, isRanged: false },
+        monsters: [
+            { id: 'flesh', hunger: 300, price: 250, escaped: false },
+            { id: 'mu-trap', hunger: 300, price: 250, escaped: false },
+            { id: 'blob', hunger: 300, price: 250, escaped: false },
+            // ... остальное
+        ],
+        lastSalary: Date.now(),
+        nextRaid: Date.now() + 360000 // 6 min
+    };
 
-            // Мир
-            const island = new THREE.Mesh(new THREE.CircleGeometry(50, 32), new THREE.MeshPhongMaterial({ color: 0x222222 }));
-            island.rotation.x = -Math.PI / 2;
-            scene.add(island);
+    // UI Update
+    function updateWatch() {
+        const watch = document.getElementById('watch-stats');
+        watch.setAttribute('value', `HP: ${state.hp}\nAmmo: ${state.ammo}\n$: ${state.money}`);
+    }
 
-            const lava = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshBasicMaterial({ color: 0xff4400 }));
-            lava.rotation.x = -Math.PI / 2;
-            lava.position.y = -2;
-            scene.add(lava);
-
-            createZooStructure();
-            createWarehouse();
-            createShop();
-
-            clock = new THREE.Clock();
-            window.addEventListener('resize', onWindowResize, false);
-        }
-
-        function createZooStructure() {
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const radius = 30;
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius;
-
-                const cage = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 8), new THREE.MeshPhongMaterial({ color: 0x444444, wireframe: true }));
-                cage.position.set(x, 3, z);
-                scene.add(cage);
-
-                const monster = createMonsterVisual(i + 1);
-                monster.position.set(x, 1, z);
-                scene.add(monster);
-
-                monsterCages.push({ mesh: cage, monsterMesh: monster, data: MONSTERS_DATA[i] });
-            }
-        }
-
-        function createMonsterVisual(id) {
-            const group = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5), new THREE.MeshPhongMaterial({color: 0xaa0000}));
-            group.add(body);
-            return group;
-        }
-
-        function createWarehouse() {
-            const wh = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 5), new THREE.MeshPhongMaterial({ color: 0x330000 }));
-            wh.position.set(0, 2, -10);
-            scene.add(wh);
-        }
-
-        function createShop() {
-            const shop = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshPhongMaterial({ color: 0x000000 }));
-            shop.position.set(15, 2, 15);
-            scene.add(shop);
-        }
-
-        function onSelect(event) {
-            // Взаимодействие при нажатии триггера контроллера
-            checkInteractions();
-        }
-
-        function setupInitialGameState() {
-            player.belt[0] = JSON.parse(JSON.stringify(WEAPONS.dagger));
-            updateUI();
-            setInterval(giveSalary, 300000); 
-            setInterval(spawnWave, 360000);
-        }
-
-        function spawnWave() {
-            const count = 3 + Math.floor(Math.random() * 3);
-            for(let i=0; i<count; i++) {
-                const type = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
-                const enemy = {
-                    ...type,
-                    mesh: new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshPhongMaterial({color: 0xff0000})),
-                    currentHp: type.hp
-                };
-                enemy.mesh.position.set(Math.random()*40-20, 1, -40);
-                scene.add(enemy.mesh);
-                enemies.push(enemy);
-            }
-            showMessage("Орда зомби нападает!");
-        }
-
-        function showMessage(text) {
-            const box = document.getElementById('msg-box');
-            box.innerText = text;
-            box.style.display = 'block';
-            setTimeout(() => box.style.display = 'none', 3000);
-        }
-
-        function updateUI() {
-            document.getElementById('money-display').innerText = `Деньги: ${player.money}`;
-            const beltText = player.belt.map(item => item ? item.name : "[Пусто]").join(" ");
-            document.getElementById('belt-status').innerText = `Пояс: ${beltText}`;
-            
-            const active = player.belt[player.activeItemIndex];
-            const hpStr = Math.floor(player.hp);
-            const ammoStr = (active && active.ammo !== undefined) ? active.ammo : '---';
-            document.getElementById('stats-display').innerText = `HP: ${hpStr} | Патроны: ${ammoStr}`;
-        }
-
-        function giveSalary() {
-            player.money += 100;
-            showMessage("Зарплата получена: +100");
-            updateUI();
-        }
-
-        function checkInteractions() {
-            // Позиция игрока (камеры)
-            const pos = renderer.xr.isPresenting ? renderer.xr.getCamera(camera).position : camera.position;
-
-            // Склад
-            if(pos.distanceTo(new THREE.Vector3(0, 2, -10)) < 4) {
-                let freeSlot = player.belt.indexOf(null);
-                if(freeSlot !== -1) {
-                    player.belt[freeSlot] = { name: "Мясо", type: "food" };
-                    showMessage("Взял мясо");
-                    updateUI();
-                }
+    // Grab Meat Logic
+    window.grabMeat = function() {
+        for(let i=0; i<4; i++) {
+            if(!state.inventory[i]) {
+                state.inventory[i] = 'meat';
+                updateInventoryVisuals();
                 return;
             }
+        }
+        console.log("Инвентарь полон!");
+    };
 
-            // Магазин (пример покупки меча за 250)
-            if(pos.distanceTo(new THREE.Vector3(15, 2, 15)) < 5) {
-                if(player.money >= 250) {
-                    let freeSlot = player.belt.indexOf(null);
-                    if(freeSlot !== -1) {
-                        player.money -= 250;
-                        player.belt[freeSlot] = JSON.parse(JSON.stringify(WEAPONS.sword));
-                        showMessage("Куплен Меч");
-                        updateUI();
-                    }
-                }
-                return;
+    function updateInventoryVisuals() {
+        for(let i=0; i<4; i++) {
+            const slot = document.getElementById(`slot-${i+1}`);
+            if(state.inventory[i] === 'meat') {
+                slot.setAttribute('material', 'color', 'red');
+            } else if(state.inventory[i]) {
+                slot.setAttribute('material', 'color', 'blue'); // Weapon
+            } else {
+                slot.setAttribute('material', 'color', 'grey');
             }
+        }
+    }
 
-            // Кормление
-            monsterCages.forEach(cage => {
-                if(pos.distanceTo(cage.mesh.position) < 6) {
-                    let meatIdx = player.belt.findIndex(i => i && i.type === "food");
-                    if(meatIdx !== -1) {
-                        player.belt[meatIdx] = null;
-                        cage.data.timer = 300;
-                        player.money += 5;
-                        showMessage(`Монстр ${cage.data.name} покормлен!`);
-                        updateUI();
-                    }
-                }
-            });
+    // Feeding
+    document.querySelectorAll('.cage').forEach((cage, index) => {
+        cage.addEventListener('click', () => {
+            let meatIndex = state.inventory.indexOf('meat');
+            if(meatIndex !== -1) {
+                state.inventory[meatIndex] = null;
+                state.monsters[index].hunger = 300;
+                state.money += 5;
+                updateInventoryVisuals();
+                updateWatch();
+            }
+        });
+    });
 
-            // Атака врагов
-            enemies.forEach((enemy, idx) => {
-                if(pos.distanceTo(enemy.mesh.position) < 4) {
-                    attackEnemy(enemy, idx);
+    // Game Loop
+    setInterval(() => {
+        // Hunger Tick
+        state.monsters.forEach(m => {
+            if(!m.escaped) {
+                m.hunger--;
+                if(m.hunger <= 0) {
+                    m.escaped = true;
+                    console.log(m.id + " СБЕЖАЛ!");
+                    // Logic to remove monster visual and cause chaos
                 }
-            });
+            }
+        });
+
+        // Salary
+        if(Date.now() - state.lastSalary > 300000) {
+            state.money += 50; // Базовая зарплата
+            state.lastSalary = Date.now();
+            updateWatch();
         }
 
-        function attackEnemy(enemy, index) {
-            let weapon = player.belt[player.activeItemIndex];
-            if(!weapon || weapon.type === 'food') return;
+        // Raid check
+        if(Date.now() > state.nextRaid) {
+            spawnEnemies();
+            state.nextRaid = Date.now() + (Math.random() * 60000 + 360000);
+        }
+    }, 1000);
 
-            enemy.currentHp -= weapon.damage;
-            if(weapon.durability) weapon.durability--;
+    function spawnEnemies() {
+        const count = Math.floor(Math.random() * 3) + 3;
+        for(let i=0; i<count; i++) {
+            const enemy = document.createElement('a-entity');
+            enemy.setAttribute('geometry', 'primitive: capsule; radius: 0.3; height: 1.5');
+            enemy.setAttribute('material', 'color', 'green');
+            enemy.setAttribute('position', `${Math.random()*20-10} 1 -15`);
+            enemy.setAttribute('class', 'interactable enemy');
+            // AI simple follow
+            enemy.setAttribute('animation', `property: position; to: 0 1 10; dur: 10000; easing: linear`);
+            document.querySelector('a-scene').appendChild(enemy);
             
-            if(enemy.currentHp <= 0) {
-                scene.remove(enemy.mesh);
-                player.money += enemy.reward;
-                enemies.splice(index, 1);
-            }
-            updateUI();
-        }
-
-        function die() {
-            player.hp = 100;
-            player.money = 0;
-            if(!renderer.xr.isPresenting) camera.position.set(0, 1.6, 5);
-            showMessage("СМЕРТЬ! Потеряно всё.");
-            updateUI();
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            renderer.setAnimationLoop(() => {
-                const delta = clock.getDelta();
-                const session = renderer.xr.getSession();
-
-                // VR Движение: если есть сессия, двигаем игрока по вектору контроллера (симуляция)
-                if (session) {
-                    // В Quest обычно используют стики. Здесь добавим простую проверку:
-                    // Если нажата любая кнопка на контроллере - идем вперед.
-                }
-
-                // Движение врагов
-                const headPos = renderer.xr.isPresenting ? renderer.xr.getCamera(camera).position : camera.position;
-                enemies.forEach(enemy => {
-                    const dir = new THREE.Vector3().subVectors(headPos, enemy.mesh.position).normalize();
-                    enemy.mesh.position.addScaledVector(dir, 0.03);
-                    if(headPos.distanceTo(enemy.mesh.position) < 1.5) {
-                        player.hp -= 0.2;
-                        if(player.hp <= 0) die();
-                        updateUI();
-                    }
-                });
-
-                // Таймеры монстров
-                monsterCages.forEach(cage => {
-                    if(!cage.data.isEscaped) {
-                        cage.data.timer -= delta;
-                        if(cage.data.timer <= 0) {
-                            cage.data.isEscaped = true;
-                            cage.monsterMesh.visible = false;
-                        }
-                    }
-                });
-
-                // Проверка падения в лаву
-                if(headPos.length() > 50) die();
-
-                renderer.render(scene, camera);
+            enemy.addEventListener('click', () => {
+                // Combat logic
+                enemy.remove();
+                state.money += 10; // Sell corpse automatically for simplicity or store it
+                updateWatch();
             });
         }
-    </script>
+    }
+
+    // Trap Logic (Random Maze)
+    setInterval(() => {
+        const pos = document.getElementById('rig').getAttribute('position');
+        // Simple check for "Stone Trap" area
+        if(Math.abs(pos.x) > 15 && Math.abs(pos.z) > 15) {
+            enterStomachMaze();
+        }
+    }, 2000);
+
+    function enterStomachMaze() {
+        // Teleport to a separate area for 5 mins
+        console.log("ПОПАЛ В ЖЕЛУДОК!");
+        document.getElementById('rig').setAttribute('position', '100 0 100');
+        setTimeout(() => {
+             // If not escaped (needs maze exit logic)
+             state.hp = 0;
+             death();
+        }, 300000);
+    }
+
+    function death() {
+        state.money = 0;
+        state.hp = 100;
+        document.getElementById('rig').setAttribute('position', '0 0 10');
+        updateWatch();
+    }
+
+    // Fishing logic
+    document.getElementById('fishing-rod').addEventListener('click', () => {
+        setTimeout(() => {
+            if(Math.random() > 0.5) {
+                state.hp = Math.min(100, state.hp + 20);
+                updateWatch();
+                console.log("Поймал рыбу!");
+            }
+        }, 3000);
+    });
+
+</script>
 </body>
 </html>
