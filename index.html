@@ -8,10 +8,6 @@
     <script src="https://unpkg.com/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
-        #vr-ui {
-            position: absolute; top: 10px; left: 10px; z-index: 10;
-            color: white; font-family: monospace; pointer-events: none;
-        }
     </style>
 </head>
 <body>
@@ -20,56 +16,52 @@
     renderer="antialias: true; colorManagement: true;"
     physics="debug: false">
     
-    <!-- Assets -->
     <a-assets>
-        <!-- Звуки и текстуры можно добавить здесь -->
+        <!-- Текстуры и звуки -->
     </a-assets>
 
-    <!-- Environment: Hell Island -->
+    <!-- Окружение: Адский остров -->
     <a-entity environment="preset: volcano; seed: 42; groundColor: #300; dressingAmount: 50; dressingColor: #500; grid: none;"></a-entity>
     
-    <!-- Lava Ocean -->
-    <a-ocean position="0 -1 0" width="200" depth="200" density="50" color="#ff4500" speed="2"></a-ocean>
+    <!-- Океан лавы -->
+    <a-ocean position="0 -1 0" width="300" depth="300" density="50" color="#ff4500" speed="2"></a-ocean>
 
-    <!-- Player with Wrist Watch and Belt -->
-    <a-entity id="rig" position="0 0 10">
-        <a-camera id="camera" wasd-controls look-controls>
-            <!-- Wrist Watch (attached to camera for simplicity, but logically on hand) -->
+    <!-- Игрок: Настройка передвижения для Quest (Rig) -->
+    <a-entity id="rig" position="0 0 10" movement-controls="controls: gamepad, keyboard">
+        <a-camera id="camera" look-controls position="0 1.6 0">
+            <!-- Часы на руке -->
             <a-entity id="watch" position="-0.3 -0.2 -0.5" rotation="0 20 0">
-                <a-plane width="0.15" height="0.1" color="#222" opacity="0.8">
+                <a-plane width="0.15" height="0.1" color="#222" opacity="0.9">
                     <a-text id="watch-stats" value="HP: 100\nAmmo: 0\n$: 0" align="center" width="0.6" position="0 0 0.01"></a-text>
                 </a-plane>
             </a-entity>
-            <a-cursor fuse="false" raycaster="objects: .interactable"></a-cursor>
+            <!-- Прицел для тех, кто без VR-контроллеров -->
+            <a-cursor fuse="false" raycaster="objects: .interactable" material="color: red; shader: flat"></a-cursor>
         </a-camera>
 
-        <!-- Belt Inventory (4 slots) -->
+        <!-- Пояс инвентаря (4 слота) -->
         <a-entity id="belt" position="0 0.8 0">
             <a-ring color="#444" radius-inner="0.3" radius-outer="0.4" rotation="-90 0 0"></a-ring>
-            <a-entity class="slot" id="slot-1" position="0.5 0 0" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
-            <a-entity class="slot" id="slot-2" position="-0.5 0 0" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
-            <a-entity class="slot" id="slot-3" position="0 0 0.5" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
-            <a-entity class="slot" id="slot-4" position="0 0 -0.5" geometry="primitive: box; width: 0.1; height: 0.1; depth: 0.1" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-1" position="0.5 0 0" geometry="primitive: box; width: 0.15; height: 0.15; depth: 0.15" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-2" position="-0.5 0 0" geometry="primitive: box; width: 0.15; height: 0.15; depth: 0.15" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-3" position="0 0 0.5" geometry="primitive: box; width: 0.15; height: 0.15; depth: 0.15" material="color: grey; opacity: 0.5"></a-entity>
+            <a-entity class="slot" id="slot-4" position="0 0 -0.5" geometry="primitive: box; width: 0.15; height: 0.15; depth: 0.15" material="color: grey; opacity: 0.5"></a-entity>
         </a-entity>
 
-        <!-- Controllers -->
-        <a-entity laser-controls="hand: left" raycaster="objects: .interactable; far: 3"></a-entity>
-        <a-entity laser-controls="hand: right" raycaster="objects: .interactable; far: 3" id="right-hand"></a-entity>
+        <!-- Контроллеры для Quest -->
+        <a-entity oculus-touch-controls="hand: left" thumbstick-logging></a-entity>
+        <a-entity oculus-touch-controls="hand: right" laser-controls="hand: right" raycaster="objects: .interactable; far: 5" id="right-hand"></a-entity>
     </a-entity>
 
-    <!-- THE ZOO GATES -->
-    <a-box position="0 1.5 -5" width="10" height="3" depth="0.2" color="#4a0000" static-body></a-box>
-
-    <!-- MONSTER CELLS -->
+    <!-- КЛЕТКИ МОНСТРОВ -->
     <!-- 1: Flesh -->
     <a-entity position="-10 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
-        <a-text value="FLESH" position="0 4.2 0" align="center"></a-text>
-        <a-entity id="monster-flesh" class="interactable" position="0 0.5 0">
-            <!-- Simplified geometry for Flesh -->
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
+        <a-text value="FLESH" position="0 4.5 0" align="center" width="6"></a-text>
+        <a-entity id="monster-flesh" class="interactable" position="0 0.5 0" onclick="feedMonster(0)">
             <a-sphere radius="0.4" color="red" scale="1.2 0.8 1.5"></a-sphere>
-            <a-sphere position="0 0.5 0.3" radius="0.3" color="pink"></a-sphere> <!-- Oval head -->
-            <a-entity id="eyes" position="0 0.6 0.5">
+            <a-sphere position="0 0.5 0.3" radius="0.3" color="pink"></a-sphere> 
+            <a-entity position="0 0.6 0.5">
                 <a-sphere radius="0.05" color="black" position="-0.1 0 0"></a-sphere>
                 <a-sphere radius="0.05" color="black" position="0.1 0 0"></a-sphere>
                 <a-sphere radius="0.05" color="black" position="0 0.1 0"></a-sphere>
@@ -79,86 +71,84 @@
 
     <!-- 2: Mu-Trap -->
     <a-entity position="-5 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
-        <a-text value="MU-TRAP" position="0 4.2 0" align="center"></a-text>
-        <a-entity id="monster-mu" position="0 1 0">
-            <a-cylinder radius="0.3" height="1.5" material="src: url(https://i.imgur.com/uVYR0y8.jpeg);"></a-cylinder> <!-- Cow pattern -->
-            <a-sphere position="0 0.8 0" radius="0.25" color="#7d2626"></a-sphere> <!-- Torn face -->
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
+        <a-text value="MU-TRAP" position="0 4.5 0" align="center" width="6"></a-text>
+        <a-entity id="monster-mu" class="interactable" position="0 1 0" onclick="feedMonster(1)">
+            <a-cylinder radius="0.3" height="1.5" color="#fff"></a-cylinder>
+            <a-sphere position="0 0.8 0" radius="0.25" color="#7d2626"></a-sphere>
         </a-entity>
     </a-entity>
 
     <!-- 3: Blob -->
     <a-entity position="0 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000"></a-box>
-        <a-text value="BLOB" position="0 4.2 0" align="center"></a-text>
-        <a-sphere id="monster-blob" position="0 0.5 0" radius="0.8" color="yellow">
-            <a-box position="0 0 0.6" width="0.6" height="0.2" depth="0.1" color="black"></a-box> <!-- Mouth -->
+        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
+        <a-text value="BLOB" position="0 4.5 0" align="center" width="6"></a-text>
+        <a-sphere id="monster-blob" class="interactable" position="0 0.5 0" radius="0.8" color="yellow" onclick="feedMonster(2)">
+            <a-box position="0 0 0.6" width="0.6" height="0.2" depth="0.1" color="black"></a-box>
             <a-entity position="-0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
             <a-entity position="0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
         </a-sphere>
     </a-entity>
 
-    <!-- Add more cages similarly for 4, 5, 6, 7, 8 -->
-    <!-- Warehouse for Meat -->
+    <!-- Склад мяса -->
     <a-entity position="10 0 0">
-        <a-box width="3" height="2" depth="3" color="#333"></a-box>
+        <a-box width="3" height="0.2" depth="3" color="#333" position="0 0.1 0"></a-box>
         <a-text value="WAREHOUSE" position="0 2.5 0" align="center"></a-text>
-        <a-box class="interactable" id="meat-source" position="0 1 0" width="0.5" height="0.3" depth="0.5" color="red" 
+        <a-box class="interactable" id="meat-source" position="0 1 0" width="0.6" height="0.4" depth="0.6" color="red" 
                onclick="grabMeat()"></a-box>
     </a-entity>
 
-    <!-- Weapon Shop -->
+    <!-- Магазин Оружия -->
     <a-entity position="-10 0 0">
-        <a-box width="4" height="3" depth="3" color="#1a1a1a"></a-box>
+        <a-box width="4" height="3" depth="3" color="#1a1a1a" position="0 1.5 0"></a-box>
         <a-text value="SHOP (IMP)" position="0 3.5 0" align="center"></a-text>
-        <!-- The Imp Trader -->
-        <a-entity id="imp-trader" position="0 1 1">
+        <a-entity id="imp-trader" position="0 1 1.2">
             <a-sphere radius="0.4" color="black"></a-sphere>
             <a-cone radius-bottom="0.4" height="1.2" color="#111" position="0 -0.5 0"></a-cone>
         </a-entity>
-        <!-- Buying Interface -->
-        <a-entity position="0 1.5 1.6" id="shop-ui">
-            <a-plane width="2" height="1.5" color="#444">
-                <a-text value="Kinzhal: Starter\nMech: 250\nKatana: 350\nBeretta: 250\nDouble: 355" 
-                        position="-0.9 0 0.01" width="1.8" color="white"></a-text>
+        <a-entity position="0 1.8 1.6" id="shop-ui" class="interactable" onclick="buyWeapon()">
+            <a-plane width="2.5" height="1.2" color="#444">
+                <a-text value="CLICK TO BUY NEXT WEAPON\nMech: 250 | Katana: 350\nBeretta: 250 | Shotgun: 700" 
+                        position="0 0 0.01" align="center" width="2"></a-text>
             </a-plane>
         </a-entity>
     </a-entity>
 
-    <!-- Fishing area -->
+    <!-- Зона рыбалки -->
     <a-entity position="0 0 20">
-        <a-text value="LAVA FISHING" position="0 2 0" align="center"></a-text>
-        <a-cylinder radius="2" height="0.1" color="#222" position="0 0 0"></a-cylinder>
-        <a-entity id="fishing-rod" class="interactable" position="0 0.5 0" geometry="primitive: cylinder; radius: 0.02; height: 2" material="color: brown" rotation="45 0 0"></a-entity>
+        <a-text value="LAVA FISHING" position="0 2.5 0" align="center"></a-text>
+        <a-cylinder radius="3" height="0.2" color="#222" position="0 0.1 0"></a-cylinder>
+        <a-entity id="fishing-rod" class="interactable" position="0 1 0" geometry="primitive: cylinder; radius: 0.02; height: 3" material="color: brown" rotation="45 0 0" onclick="startFishing()"></a-entity>
     </a-entity>
 
 </a-scene>
 
 <script>
-    // Game State
+    // Состояние игры
     let state = {
         hp: 100,
         money: 0,
         ammo: 8,
         inventory: [null, null, null, null],
-        weapon: { name: 'Kinzhal', damage: 20, durability: 50, isRanged: false },
+        weapon: { name: 'Kinzhal', damage: 20, durability: 50 },
         monsters: [
-            { id: 'flesh', hunger: 300, price: 250, escaped: false },
-            { id: 'mu-trap', hunger: 300, price: 250, escaped: false },
-            { id: 'blob', hunger: 300, price: 250, escaped: false },
-            // ... остальное
+            { id: 'flesh', hunger: 300, escaped: false },
+            { id: 'mu-trap', hunger: 300, escaped: false },
+            { id: 'blob', hunger: 300, escaped: false }
         ],
         lastSalary: Date.now(),
-        nextRaid: Date.now() + 360000 // 6 min
+        nextRaid: Date.now() + 360000
     };
 
-    // UI Update
+    // Обновление интерфейса часов
     function updateWatch() {
         const watch = document.getElementById('watch-stats');
-        watch.setAttribute('value', `HP: ${state.hp}\nAmmo: ${state.ammo}\n$: ${state.money}`);
+        if (watch) {
+            watch.setAttribute('value', `HP: ${state.hp}\nAmmo: ${state.ammo}\n$: ${state.money}`);
+        }
     }
 
-    // Grab Meat Logic
+    // Логика взятия мяса
     window.grabMeat = function() {
         for(let i=0; i<4; i++) {
             if(!state.inventory[i]) {
@@ -167,7 +157,19 @@
                 return;
             }
         }
-        console.log("Инвентарь полон!");
+    };
+
+    // Логика кормления
+    window.feedMonster = function(index) {
+        let meatIndex = state.inventory.indexOf('meat');
+        if(meatIndex !== -1) {
+            state.inventory[meatIndex] = null;
+            state.monsters[index].hunger = 300;
+            state.money += 5;
+            updateInventoryVisuals();
+            updateWatch();
+            console.log("Монстр накормлен!");
+        }
     };
 
     function updateInventoryVisuals() {
@@ -175,95 +177,77 @@
             const slot = document.getElementById(`slot-${i+1}`);
             if(state.inventory[i] === 'meat') {
                 slot.setAttribute('material', 'color', 'red');
+                slot.setAttribute('material', 'opacity', '1');
             } else if(state.inventory[i]) {
-                slot.setAttribute('material', 'color', 'blue'); // Weapon
+                slot.setAttribute('material', 'color', 'blue');
+                slot.setAttribute('material', 'opacity', '1');
             } else {
                 slot.setAttribute('material', 'color', 'grey');
+                slot.setAttribute('material', 'opacity', '0.5');
             }
         }
     }
 
-    // Feeding
-    document.querySelectorAll('.cage').forEach((cage, index) => {
-        cage.addEventListener('click', () => {
-            let meatIndex = state.inventory.indexOf('meat');
-            if(meatIndex !== -1) {
-                state.inventory[meatIndex] = null;
-                state.monsters[index].hunger = 300;
-                state.money += 5;
-                updateInventoryVisuals();
-                updateWatch();
-            }
-        });
-    });
-
-    // Game Loop
-    setInterval(() => {
-        // Hunger Tick
-        state.monsters.forEach(m => {
-            if(!m.escaped) {
-                m.hunger--;
-                if(m.hunger <= 0) {
-                    m.escaped = true;
-                    console.log(m.id + " СБЕЖАЛ!");
-                    // Logic to remove monster visual and cause chaos
+    // Покупка оружия (упрощенная)
+    window.buyWeapon = function() {
+        if (state.money >= 250) {
+            state.money -= 250;
+            for(let i=0; i<4; i++) {
+                if(!state.inventory[i]) {
+                    state.inventory[i] = 'sword';
+                    updateInventoryVisuals();
+                    updateWatch();
+                    return;
                 }
             }
-        });
+        }
+    };
 
-        // Salary
+    // Рыбалка
+    window.startFishing = function() {
+        console.log("Рыбачим...");
+        setTimeout(() => {
+            if(Math.random() > 0.6) {
+                state.hp = Math.min(100, state.hp + 15);
+                updateWatch();
+            }
+        }, 2000);
+    };
+
+    // Основной цикл
+    setInterval(() => {
+        // Проверка смерти в лаве (простая проверка высоты)
+        const rig = document.getElementById('rig');
+        const pos = rig.getAttribute('position');
+        if (pos.y < -0.5) {
+            death();
+        }
+
+        // Зарплата
         if(Date.now() - state.lastSalary > 300000) {
-            state.money += 50; // Базовая зарплата
+            state.money += 50;
             state.lastSalary = Date.now();
             updateWatch();
         }
 
-        // Raid check
+        // Рейд монстров
         if(Date.now() > state.nextRaid) {
             spawnEnemies();
-            state.nextRaid = Date.now() + (Math.random() * 60000 + 360000);
+            state.nextRaid = Date.now() + 400000;
         }
     }, 1000);
 
     function spawnEnemies() {
-        const count = Math.floor(Math.random() * 3) + 3;
-        for(let i=0; i<count; i++) {
+        const scene = document.querySelector('a-scene');
+        for(let i=0; i<3; i++) {
             const enemy = document.createElement('a-entity');
-            enemy.setAttribute('geometry', 'primitive: capsule; radius: 0.3; height: 1.5');
-            enemy.setAttribute('material', 'color', 'green');
-            enemy.setAttribute('position', `${Math.random()*20-10} 1 -15`);
-            enemy.setAttribute('class', 'interactable enemy');
-            // AI simple follow
-            enemy.setAttribute('animation', `property: position; to: 0 1 10; dur: 10000; easing: linear`);
-            document.querySelector('a-scene').appendChild(enemy);
-            
-            enemy.addEventListener('click', () => {
-                // Combat logic
-                enemy.remove();
-                state.money += 10; // Sell corpse automatically for simplicity or store it
-                updateWatch();
-            });
+            enemy.setAttribute('geometry', 'primitive: box; width: 0.5; height: 1.5; depth: 0.5');
+            enemy.setAttribute('material', 'color: green');
+            enemy.setAttribute('position', `${Math.random()*10-5} 1 -5`);
+            enemy.setAttribute('class', 'interactable');
+            enemy.setAttribute('onclick', 'this.remove()');
+            scene.appendChild(enemy);
         }
-    }
-
-    // Trap Logic (Random Maze)
-    setInterval(() => {
-        const pos = document.getElementById('rig').getAttribute('position');
-        // Simple check for "Stone Trap" area
-        if(Math.abs(pos.x) > 15 && Math.abs(pos.z) > 15) {
-            enterStomachMaze();
-        }
-    }, 2000);
-
-    function enterStomachMaze() {
-        // Teleport to a separate area for 5 mins
-        console.log("ПОПАЛ В ЖЕЛУДОК!");
-        document.getElementById('rig').setAttribute('position', '100 0 100');
-        setTimeout(() => {
-             // If not escaped (needs maze exit logic)
-             state.hp = 0;
-             death();
-        }, 300000);
     }
 
     function death() {
@@ -273,17 +257,11 @@
         updateWatch();
     }
 
-    // Fishing logic
-    document.getElementById('fishing-rod').addEventListener('click', () => {
-        setTimeout(() => {
-            if(Math.random() > 0.5) {
-                state.hp = Math.min(100, state.hp + 20);
-                updateWatch();
-                console.log("Поймал рыбу!");
-            }
-        }, 3000);
-    });
-
+    // Инициализация при загрузке
+    window.onload = () => {
+        updateWatch();
+        updateInventoryVisuals();
+    };
 </script>
 </body>
 </html>
