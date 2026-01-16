@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hell Zoo VR - Quest Support</title>
+    <title>Hell Zoo VR - Dread Edition</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- Добавляем библиотеку для передвижения и управления -->
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
     <style>
@@ -15,128 +14,179 @@
 <body>
 
 <a-scene 
-    renderer="antialias: true; colorManagement: true;"
-    physics="debug: false">
+    renderer="antialias: true; colorManagement: true; exposure: 0.8;"
+    physics="debug: false; gravity: -9.8;">
     
     <a-assets>
-        <!-- Текстуры и звуки -->
+        <!-- Текстура для земли (инфернальный камень) -->
+        <img id="groundTex" src="https://cdn.pixabay.com/photo/2016/11/21/17/34/lava-1846684_1280.jpg">
     </a-assets>
 
-    <!-- Окружение: Адский остров -->
-    <a-entity environment="preset: volcano; seed: 42; groundColor: #300; dressingAmount: 50; dressingColor: #500; grid: none;"></a-entity>
+    <!-- УЛУЧШЕННОЕ ОКРУЖЕНИЕ -->
+    <a-entity environment="preset: volcano; seed: 666; groundColor: #200; dressingAmount: 80; dressingColor: #400; fog: 0.7; skyType: gradient; skyColor: #300"></a-entity>
     
-    <!-- Океан лавы -->
-    <a-ocean position="0 -1 0" width="300" depth="300" density="50" color="#ff4500" speed="2"></a-ocean>
+    <!-- Атмосферные частицы пепла -->
+    <a-entity position="0 5 0" particle-system="preset: dust; particleCount: 5000; color: #f00, #555; size: 0.1"></a-entity>
 
-    <!-- Игрок: Полная поддержка Quest (Rig + Movement Controls) -->
+    <!-- Океан кипящей лавы -->
+    <a-ocean position="0 -0.5 0" width="500" depth="500" density="60" color="#ff2200" speed="3"></a-ocean>
+
+    <!-- ИГРОК С КОЛЛИЗИЯМИ -->
     <a-entity id="rig" 
               position="0 0 10" 
-              movement-controls="controls: gamepad, keyboard; speed: 0.2">
+              movement-controls="controls: gamepad, keyboard; speed: 0.15; constrainToNavmesh: false">
+        
+        <!-- Капсула коллизии игрока -->
+        <a-entity id="player-collider" geometry="primitive: cylinder; radius: 0.4; height: 1.8" position="0 0.9 0" visible="false" body="type: dynamic; mass: 1; fixedRotation: true;"></a-entity>
+
         <a-entity id="camera" 
                   camera 
                   look-controls 
                   position="0 1.6 0">
-            <!-- Часы на руке -->
-            <a-entity id="watch" position="-0.3 -0.2 -0.5" rotation="0 20 0">
-                <a-plane width="0.15" height="0.1" color="#222" opacity="0.9">
-                    <a-text id="watch-stats" value="HP: 100\nAmmo: 0\n$: 0" align="center" width="0.6" position="0 0 0.01"></a-text>
+            
+            <!-- Дизайн Часов (Киберпанк-Ад) -->
+            <a-entity id="watch" position="-0.4 -0.3 -0.6" rotation="0 25 0">
+                <a-plane width="0.2" height="0.15" color="#111" material="emissive: #300; emissiveIntensity: 0.5">
+                    <a-text id="watch-stats" value="HP: 100\nAMMO: 8\nCASH: 0" align="center" width="0.8" position="0 0 0.02" color="#ff4444" font="monoid"></a-text>
                 </a-plane>
             </a-entity>
+
             <!-- Прицел -->
-            <a-cursor fuse="false" raycaster="objects: .interactable" material="color: red; shader: flat"></a-cursor>
-        </a-entity>
-
-        <!-- Левый контроллер (Передвижение) -->
-        <a-entity oculus-touch-controls="hand: left"></a-entity>
-        
-        <!-- Правый контроллер (Взаимодействие и Поворот) -->
-        <a-entity oculus-touch-controls="hand: right" 
-                  laser-controls="hand: right" 
-                  raycaster="objects: .interactable; far: 5"></a-entity>
-    </a-entity>
-
-    <!-- КЛЕТКИ МОНСТРОВ -->
-    <!-- 1: Flesh -->
-    <a-entity position="-10 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
-        <a-text value="FLESH" position="0 4.5 0" align="center" width="6"></a-text>
-        <a-entity id="monster-flesh" class="interactable" position="0 0.5 0" onclick="feedMonster(0)">
-            <a-sphere radius="0.4" color="red" scale="1.2 0.8 1.5"></a-sphere>
-            <a-sphere position="0 0.5 0.3" radius="0.3" color="pink"></a-sphere> 
-            <a-entity position="0 0.6 0.5">
-                <a-sphere radius="0.05" color="black" position="-0.1 0 0"></a-sphere>
-                <a-sphere radius="0.05" color="black" position="0.1 0 0"></a-sphere>
-                <a-sphere radius="0.05" color="black" position="0 0.1 0"></a-sphere>
+            <a-entity cursor="fuse: false" 
+                      raycaster="objects: .interactable" 
+                      position="0 0 -1" 
+                      geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" 
+                      material="color: #ff0000; shader: flat; opacity: 0.8">
             </a-entity>
         </a-entity>
+
+        <!-- Контроллеры -->
+        <a-entity oculus-touch-controls="hand: left"></a-entity>
+        <a-entity oculus-touch-controls="hand: right" 
+                  laser-controls="hand: right" 
+                  raycaster="objects: .interactable; far: 6"></a-entity>
     </a-entity>
 
-    <!-- 2: Mu-Trap -->
-    <a-entity position="-5 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
-        <a-text value="MU-TRAP" position="0 4.5 0" align="center" width="6"></a-text>
-        <a-entity id="monster-mu" class="interactable" position="0 1 0" onclick="feedMonster(1)">
-            <a-cylinder radius="0.3" height="1.5" color="#fff"></a-cylinder>
-            <a-sphere position="0 0.8 0" radius="0.25" color="#7d2626"></a-sphere>
+    <!-- ДИЗАЙН КЛЕТОК И МОНСТРОВ -->
+    
+    <!-- Общий свет для сцены -->
+    <a-light type="ambient" color="#444"></a-light>
+    <a-light type="point" intensity="1.5" position="0 10 0" color="#ff5500"></a-light>
+
+    <!-- 1: Flesh (Мясное существо) -->
+    <a-entity position="-12 0 -12">
+        <!-- Клетка с шипами -->
+        <a-box width="5" height="5" depth="5" material="src: #groundTex; color: #444; roughness: 1" position="0 2.5 0" static-body>
+            <a-box width="4.8" height="4.8" depth="4.8" material="wireframe: true; color: #ff3300; wireframeLineWidth: 3"></a-box>
+        </a-box>
+        <a-text value="FLESH" position="0 5.5 0" align="center" width="10" color="red" font="exo2bold"></a-text>
+        
+        <a-entity id="monster-flesh" class="interactable" position="0 0.8 0" onclick="feedMonster(0)">
+            <a-sphere radius="0.7" color="#800" scale="1 0.6 1.3"></a-sphere>
+            <a-sphere position="0 0.6 0.6" radius="0.4" color="#a33"></a-sphere> <!-- Овальная голова -->
+            <!-- 3 Глаза -->
+            <a-sphere radius="0.06" color="black" position="-0.15 0.7 0.9"></a-sphere>
+            <a-sphere radius="0.06" color="black" position="0.15 0.7 0.9"></a-sphere>
+            <a-sphere radius="0.06" color="black" position="0 0.85 0.95"></a-sphere>
+            <a-light type="point" color="red" intensity="0.5" distance="2"></a-light>
         </a-entity>
     </a-entity>
 
-    <!-- 3: Blob -->
-    <a-entity position="0 0 -10">
-        <a-box class="cage" width="4" height="4" depth="4" material="wireframe: true; color: #ff0000" position="0 2 0"></a-box>
-        <a-text value="BLOB" position="0 4.5 0" align="center" width="6"></a-text>
-        <a-sphere id="monster-blob" class="interactable" position="0 0.5 0" radius="0.8" color="yellow" onclick="feedMonster(2)">
-            <a-box position="0 0 0.6" width="0.6" height="0.2" depth="0.1" color="black"></a-box>
-            <a-entity position="-0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
-            <a-entity position="0.3 0.8 0" geometry="primitive: cylinder; radius: 0.05; height: 0.4" material="color: yellow"></a-entity>
-        </a-sphere>
-    </a-entity>
-
-    <!-- Склад мяса -->
-    <a-entity position="10 0 0">
-        <a-box width="3" height="0.2" depth="3" color="#333" position="0 0.1 0"></a-box>
-        <a-text value="WAREHOUSE" position="0 2.5 0" align="center"></a-text>
-        <a-box class="interactable" id="meat-source" position="0 1 0" width="0.6" height="0.4" depth="0.6" color="red" 
-               onclick="grabMeat()"></a-box>
-    </a-entity>
-
-    <!-- Магазин Оружия -->
-    <a-entity position="-10 0 0">
-        <a-box width="4" height="3" depth="3" color="#1a1a1a" position="0 1.5 0"></a-box>
-        <a-text value="SHOP (IMP)" position="0 3.5 0" align="center"></a-text>
-        <a-entity id="imp-trader" position="0 1 1.2">
-            <a-sphere radius="0.4" color="black"></a-sphere>
-            <a-cone radius-bottom="0.4" height="1.2" color="#111" position="0 -0.5 0"></a-cone>
+    <!-- 2: Mu-Trap (Человек в костюме коровы) -->
+    <a-entity position="-4 0 -15">
+        <a-box width="5" height="5" depth="5" material="src: #groundTex; color: #444" position="0 2.5 0" static-body>
+            <a-box width="4.8" height="4.8" depth="4.8" material="wireframe: true; color: #ff3300"></a-box>
+        </a-box>
+        <a-text value="MU-TRAP" position="0 5.5 0" align="center" width="10" color="red"></a-text>
+        
+        <a-entity id="monster-mu" class="interactable" position="0 1.2 0" onclick="feedMonster(1)">
+            <a-cylinder radius="0.4" height="1.8" material="src: url(https://i.imgur.com/uVYR0y8.jpeg);"></a-cylinder>
+            <a-sphere position="0 0.9 0" radius="0.35" color="#500" material="roughness: 1">
+                 <a-text value="HELP" position="0 0 0.36" align="center" width="1" color="white"></a-text>
+            </a-sphere>
         </a-entity>
-        <a-entity position="0 1.8 1.6" id="shop-ui" class="interactable" onclick="buyWeapon()">
-            <a-plane width="2.5" height="1.2" color="#444">
-                <a-text value="CLICK TO BUY NEXT WEAPON\nMech: 250 | Katana: 350\nBeretta: 250 | Shotgun: 700" 
-                        position="0 0 0.01" align="center" width="2"></a-text>
+    </a-entity>
+
+    <!-- 3: Blob (Слизь с пастью) -->
+    <a-entity position="4 0 -15">
+        <a-box width="5" height="5" depth="5" material="src: #groundTex; color: #444" position="0 2.5 0" static-body>
+            <a-box width="4.8" height="4.8" depth="4.8" material="wireframe: true; color: #ff3300"></a-box>
+        </a-box>
+        <a-text value="BLOB" position="0 5.5 0" align="center" width="10" color="red"></a-text>
+        
+        <a-entity id="monster-blob" class="interactable" position="0 0.5 0" onclick="feedMonster(2)">
+            <a-sphere radius="1.2" color="#eebb00" material="opacity: 0.9; roughness: 0">
+                <a-box position="0 -0.2 1.1" width="1" height="0.4" depth="0.2" color="#222">
+                    <a-box position="0 0 0.1" width="0.9" height="0.1" color="white"></a-box> <!-- Зубы -->
+                </a-box>
+                <!-- Глаза на стебельках -->
+                <a-entity position="-0.4 1 0.5" rotation="20 0 0">
+                    <a-cylinder radius="0.05" height="0.8" color="#eebb00"></a-cylinder>
+                    <a-sphere position="0 0.4 0" radius="0.15" color="white">
+                        <a-sphere radius="0.05" color="black" position="0 0 0.12"></a-sphere>
+                    </a-sphere>
+                </a-entity>
+                <a-entity position="0.4 1 0.5" rotation="20 0 0">
+                    <a-cylinder radius="0.05" height="0.8" color="#eebb00"></a-cylinder>
+                    <a-sphere position="0 0.4 0" radius="0.15" color="white">
+                        <a-sphere radius="0.05" color="black" position="0 0 0.12"></a-sphere>
+                    </a-sphere>
+                </a-entity>
+            </a-sphere>
+        </a-entity>
+    </a-entity>
+
+    <!-- Склад: Кровавый мясной цех -->
+    <a-entity position="12 0 0">
+        <a-box width="4" height="0.5" depth="4" color="#222" static-body></a-box>
+        <a-text value="MEAT FACTORY" position="0 3 0" align="center" width="8" color="#ff0000"></a-text>
+        <!-- Мясо на крюке -->
+        <a-cylinder radius="0.05" height="2" position="0 2 0" color="#555"></a-cylinder>
+        <a-box class="interactable" id="meat-source" position="0 1 0" width="0.8" height="1" depth="0.5" color="#a00" 
+               material="roughness: 0.5" onclick="grabMeat()">
+               <a-light type="point" color="red" intensity="1" distance="3"></a-light>
+        </a-box>
+    </a-entity>
+
+    <!-- МАГАЗИН: Логово Черта -->
+    <a-entity position="-12 0 0">
+        <a-box width="5" height="4" depth="5" material="src: #groundTex; color: #111" position="0 2 0" static-body></a-box>
+        <a-text value="BLACK MARKET" position="0 4.5 0" align="center" width="8" color="#ff4400"></a-text>
+        <a-entity id="imp-trader" position="0 1 1.5">
+            <a-sphere radius="0.5" color="#111" material="emissive: #200"></a-sphere>
+            <a-cone radius-bottom="0.5" height="1.5" color="#000" position="0 -0.5 0"></a-cone>
+            <a-entity position="0 0.3 0.4" id="imp-eyes">
+                <a-sphere radius="0.05" color="red" position="-0.15 0 0"></a-sphere>
+                <a-sphere radius="0.05" color="red" position="0.15 0 0"></a-sphere>
+            </a-entity>
+        </a-entity>
+        <a-entity position="0 1.8 2.1" class="interactable" onclick="buyWeapon()">
+            <a-plane width="2.5" height="1.5" color="#222" opacity="0.9">
+                <a-text value="[ BUY ARSENAL ]\nSword: 250\nKatana: 350\nBeretta: 250\nShotgun: 700" 
+                        position="0 0 0.02" align="center" width="2.5" color="white"></a-text>
             </a-plane>
         </a-entity>
     </a-entity>
 
-    <!-- Зона рыбалки -->
-    <a-entity position="0 0 20">
-        <a-text value="LAVA FISHING" position="0 2.5 0" align="center"></a-text>
-        <a-cylinder radius="3" height="0.2" color="#222" position="0 0.1 0"></a-cylinder>
-        <a-entity id="fishing-rod" class="interactable" position="0 1 0" geometry="primitive: cylinder; radius: 0.02; height: 3" material="color: brown" rotation="45 0 0" onclick="startFishing()"></a-entity>
-    </a-entity>
+    <!-- ДЕКОРАЦИИ И ГРАНИЦЫ ОСТРОВА -->
+    <a-box position="0 0 30" width="100" height="2" depth="1" color="#300" static-body opacity="0.5"></a-box>
+    <a-box position="0 0 -30" width="100" height="2" depth="1" color="#300" static-body opacity="0.5"></a-box>
+    <a-box position="30 0 0" width="1" height="2" depth="100" color="#300" static-body opacity="0.5"></a-box>
+    <a-box position="-30 0 0" width="1" height="2" depth="100" color="#300" static-body opacity="0.5"></a-box>
 
 </a-scene>
 
 <script>
-    // Состояние игры
+    // Игровой движок и состояние
     let state = {
         hp: 100,
         money: 0,
         ammo: 8,
         inventory: [null, null, null, null],
-        weapon: { name: 'Kinzhal', damage: 20, durability: 50 },
         monsters: [
-            { id: 'flesh', hunger: 300, escaped: false },
-            { id: 'mu-trap', hunger: 300, escaped: false },
-            { id: 'blob', hunger: 300, escaped: false }
+            { id: 'flesh', hunger: 300, position: {x: -12, z: -12} },
+            { id: 'mu-trap', hunger: 300, position: {x: -4, z: -15} },
+            { id: 'blob', hunger: 300, position: {x: 4, z: -15} }
         ],
         lastSalary: Date.now(),
         nextRaid: Date.now() + 360000
@@ -145,21 +195,25 @@
     function updateWatch() {
         const watch = document.getElementById('watch-stats');
         if (watch) {
-            watch.setAttribute('value', `HP: ${state.hp}\nAmmo: ${state.ammo}\n$: ${state.money}`);
+            watch.setAttribute('value', `HP: ${state.hp}\nAMMO: ${state.ammo}\nCASH: ${state.money}`);
         }
     }
 
+    // Взаимодействие: Взять мясо
     window.grabMeat = function() {
-        for(let i=0; i<4; i++) {
-            if(!state.inventory[i]) {
-                state.inventory[i] = 'meat';
-                console.log("Взял мясо");
-                updateWatch();
-                return;
-            }
+        let emptySlot = state.inventory.indexOf(null);
+        if(emptySlot !== -1) {
+            state.inventory[emptySlot] = 'meat';
+            console.log("Мясо добавлено в пояс");
+            updateWatch();
+            // Визуальный эффект
+            document.getElementById('meat-source').setAttribute('animation', 'property: scale; to: 1.2 1.2 1.2; dur: 100; dir: alternate; loop: 2');
+        } else {
+            console.warn("Инвентарь полон!");
         }
     };
 
+    // Взаимодействие: Покормить монстра
     window.feedMonster = function(index) {
         let meatIndex = state.inventory.indexOf('meat');
         if(meatIndex !== -1) {
@@ -167,69 +221,53 @@
             state.monsters[index].hunger = 300;
             state.money += 5;
             updateWatch();
-            console.log("Монстр накормлен!");
+            console.log("Монстр накормлен. +5 монет");
+        } else {
+            console.warn("Нужно мясо!");
         }
     };
 
+    // Взаимодействие: Магазин
     window.buyWeapon = function() {
         if (state.money >= 250) {
             state.money -= 250;
             updateWatch();
-            console.log("Куплено оружие");
+            console.log("Оружие приобретено");
+        } else {
+            console.log("Недостаточно денег!");
         }
     };
 
-    window.startFishing = function() {
-        console.log("Рыбачим...");
-        setTimeout(() => {
-            if(Math.random() > 0.6) {
-                state.hp = Math.min(100, state.hp + 15);
-                updateWatch();
-            }
-        }, 2000);
-    };
-
+    // Логика смерти и лавы
     setInterval(() => {
         const rig = document.getElementById('rig');
         const pos = rig.getAttribute('position');
-        if (pos.y < -0.5) {
-            death();
+        
+        // Падение в лаву (океан на -0.5)
+        if (pos.y < -0.4) {
+            death("СГОРЕЛ В ЛАВЕ");
         }
 
+        // Зарплата каждые 5 минут
         if(Date.now() - state.lastSalary > 300000) {
             state.money += 50;
             state.lastSalary = Date.now();
             updateWatch();
         }
-
-        if(Date.now() > state.nextRaid) {
-            spawnEnemies();
-            state.nextRaid = Date.now() + 400000;
-        }
     }, 1000);
 
-    function spawnEnemies() {
-        const scene = document.querySelector('a-scene');
-        for(let i=0; i<3; i++) {
-            const enemy = document.createElement('a-entity');
-            enemy.setAttribute('geometry', 'primitive: box; width: 0.5; height: 1.5; depth: 0.5');
-            enemy.setAttribute('material', 'color: green');
-            enemy.setAttribute('position', `${Math.random()*10-5} 1 -5`);
-            enemy.setAttribute('class', 'interactable');
-            enemy.setAttribute('onclick', 'this.remove()');
-            scene.appendChild(enemy);
-        }
-    }
-
-    function death() {
+    function death(reason) {
+        console.error(reason);
         state.money = 0;
         state.hp = 100;
         document.getElementById('rig').setAttribute('position', '0 0 10');
         updateWatch();
     }
 
+    // Инициализация при старте
     window.onload = () => {
         updateWatch();
+        console.log("Hell Zoo VR Загружен. Добро пожаловать в ад.");
     };
 </script>
 </body>
