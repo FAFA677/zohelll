@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hell Zoo VR - Escape Horror</title>
-    <!-- A-Frame library for VR -->
+    <title>Hell Zoo VR - Survival Horror</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
@@ -17,291 +16,368 @@
             pointer-events: none;
             z-index: 10;
         }
-        .warning { color: yellow; font-weight: bold; }
-        .danger { color: red; text-shadow: 0 0 10px red; }
+        .hud-top { font-size: 1.2rem; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
+        .danger { color: #ff0000; text-shadow: 0 0 10px red; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="ui-overlay">
-        <h1>АДСКИЙ ЗООПАРК</h1>
-        <div id="status">Статус: Все клетки заперты</div>
-        <div id="timer">До следующего кормления: <span id="time-left">05:00</span></div>
-        <p>Нажимайте (триггер или клик) на кормушки, чтобы дать МЯСО.</p>
+        <div class="hud-top">
+            <div>ЗДОРОВЬЕ: <span id="hp-val">100</span> | ДЕНЬГИ: $<span id="money-val">0</span></div>
+            <div id="status">Статус: Смена началась</div>
+            <div id="wave-timer">След. рейд через: <span id="wave-time">06:00</span></div>
+            <div id="fed-status">До кормления: <span id="hunger-time">05:00</span></div>
+        </div>
     </div>
 
-    <a-scene fog="type: exponential; color: #1a0505; density: 0.15">
-        <!-- Ресурсы и текстуры -->
+    <a-scene fog="type: exponential; color: #1a0505; density: 0.1">
         <a-assets>
-            <img id="flesh-texture" src="https://i.imgur.com/rS2XgI1.jpg" crossorigin="anonymous">
             <img id="blood-floor" src="https://i.imgur.com/vH6vGxk.jpg" crossorigin="anonymous">
-            <img id="metal-grate" src="https://i.imgur.com/wV2Q5Y8.jpg" crossorigin="anonymous">
+            <img id="stone-tex" src="https://i.imgur.com/83p157p.jpg" crossorigin="anonymous">
         </a-assets>
 
         <!-- Окружение -->
         <a-sky color="#050000"></a-sky>
-        <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100" src="#blood-floor" repeat="50 50"></a-plane>
-        <a-light type="ambient" color="#331111"></a-light>
-        <a-light type="point" position="0 5 0" intensity="0.5" color="#ff0000"></a-light>
-
-        <!-- Камера и контроллеры -->
-        <a-entity id="rig" position="0 0 15">
-            <a-camera>
-                <a-cursor color="#ff0000" fuse="false"></a-cursor>
-            </a-camera>
-            <a-entity laser-controls="hand: right"></a-entity>
-            <a-entity laser-controls="hand: left"></a-entity>
-        </a-entity>
-
-        <!-- КЛЕТКА 1: Flesh -->
-        <a-entity position="-10 0 -10" class="enclosure" data-monster="Flesh">
-            <a-box position="0 2.5 0" width="6" height="5" depth="6" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <!-- Прутья -->
-            <a-cylinder position="-3 2.5 3" radius="0.1" height="5" color="#444"></a-cylinder>
-            <a-cylinder position="3 2.5 3" radius="0.1" height="5" color="#444"></a-cylinder>
-            <!-- Монстр Flesh -->
-            <a-entity id="monster-flesh" position="0 0.5 0">
-                <a-ellipsoid scale="1 0.7 1.5" color="#8b0000" material="roughness: 1">
-                    <!-- Глаза -->
-                    <a-sphere position="0.3 0.4 1.4" radius="0.1" color="white"></a-sphere>
-                    <a-sphere position="-0.3 0.4 1.4" radius="0.1" color="white"></a-sphere>
-                    <a-sphere position="0 0.7 1.2" radius="0.1" color="white"></a-sphere>
-                </a-ellipsoid>
-                <a-cylinder position="0.5 -0.3 0.8" radius="0.15" height="1" color="#5a0000"></a-cylinder>
-                <a-cylinder position="-0.5 -0.3 0.8" radius="0.15" height="1" color="#5a0000"></a-cylinder>
-                <a-cylinder position="0.5 -0.3 -0.8" radius="0.15" height="1" color="#5a0000"></a-cylinder>
-                <a-cylinder position="-0.5 -0.3 -0.8" radius="0.15" height="1" color="#5a0000"></a-cylinder>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Flesh')"></a-box>
-        </a-entity>
-
-        <!-- КЛЕТКА 2: Mu-Trap -->
-        <a-entity position="0 0 -10" class="enclosure" data-monster="MuTrap">
-            <a-box position="0 2.5 0" width="6" height="5" depth="6" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <a-entity id="monster-mutrap" position="0 0 0">
-                <!-- Тело человека в костюме коровы -->
-                <a-box position="0 1.5 0" width="0.8" height="1.8" depth="0.5" color="white" 
-                       material="src: url(https://upload.wikimedia.org/wikipedia/commons/d/d4/Cow_pattern_02.svg); repeat: 2 2"></a-box>
-                <!-- Ободранное лицо -->
-                <a-sphere position="0 2.6 0" radius="0.35" color="#cc0000">
-                    <a-plane position="0 0 0.31" width="0.4" height="0.4" color="#550000" material="opacity: 0.9"></a-plane>
-                </a-sphere>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('MuTrap')"></a-box>
-        </a-entity>
-
-        <!-- КЛЕТКА 3: Blob -->
-        <a-entity position="10 0 -10" class="enclosure" data-monster="Blob">
-            <a-box position="0 2.5 0" width="6" height="5" depth="6" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <a-entity id="monster-blob" position="0 0.3 0">
-                <a-sphere scale="1.5 0.8 1.5" color="yellow" material="roughness: 0.1">
-                    <a-box position="0 -0.2 1.4" width="1.2" height="0.4" depth="0.2" color="black">
-                        <!-- Зубы -->
-                        <a-cone position="-0.4 0.1 0.1" radius-bottom="0.05" height="0.15" color="white"></a-cone>
-                        <a-cone position="0 0.1 0.1" radius-bottom="0.05" height="0.15" color="white"></a-cone>
-                        <a-cone position="0.4 0.1 0.1" radius-bottom="0.05" height="0.15" color="white"></a-cone>
-                    </a-box>
-                </a-sphere>
-                <!-- Глаза улитки -->
-                <a-cylinder position="0.5 0.8 0.5" radius="0.05" height="1" color="yellow">
-                    <a-sphere position="0 0.5 0" radius="0.15" color="white"><a-sphere radius="0.05" color="black" position="0 0 0.13"></a-sphere></a-sphere>
-                </a-cylinder>
-                <a-cylinder position="-0.5 0.8 0.5" radius="0.05" height="1" color="yellow">
-                    <a-sphere position="0 0.5 0" radius="0.15" color="white"><a-sphere radius="0.05" color="black" position="0 0 0.13"></a-sphere></a-sphere>
-                </a-cylinder>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Blob')"></a-box>
-        </a-entity>
-
-        <!-- КЛЕТКА 4: Giant White (Behemoth) -->
-        <a-entity position="-15 0 0" class="enclosure" data-monster="Giant">
-            <a-box position="0 6 0" width="15" height="12" depth="15" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <a-entity id="monster-giant" position="0 2.5 0" scale="6 6 6">
-                <a-ellipsoid scale="1 0.7 1.5" color="#ffffff">
-                    <!-- 11 глаз разбросаны -->
-                    <a-sphere position="0.2 0.5 1.4" radius="0.05" color="red"></a-sphere>
-                    <a-sphere position="-0.2 0.5 1.4" radius="0.05" color="red"></a-sphere>
-                    <a-sphere position="0 0.7 1.2" radius="0.05" color="red"></a-sphere>
-                    <a-sphere position="0.4 0.3 1.3" radius="0.05" color="red"></a-sphere>
-                    <a-sphere position="-0.4 0.3 1.3" radius="0.05" color="red"></a-sphere>
-                </a-ellipsoid>
-                <!-- Огромные зубы -->
-                <a-cone position="0 -0.5 1.5" rotation="180 0 0" radius-bottom="0.2" height="0.5" color="white"></a-cone>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 7.7" width="2" height="1" depth="1" color="#ff4444" 
-                   onclick="feedMonster('Giant')"></a-box>
-        </a-entity>
-
-        <!-- КЛЕТКА 5: Mimic Wood -->
-        <a-entity position="15 0 0" class="enclosure" data-monster="Mimic">
-            <a-box position="0 2.5 0" width="6" height="5" depth="6" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <a-box id="monster-mimic" position="0 2 0" width="0.5" height="4" depth="0.1" color="#8b4513" 
-                   animation__shake="property: rotation; to: 0 5 0; dur: 100; dir: alternate; loop: true; startEvents: mouseenter">
-                <!-- Щупальца (скрыты до активации) -->
-                <a-entity id="mimic-tentacles" visible="false">
-                    <a-cylinder position="0 0 0" rotation="90 0 0" radius="0.05" height="4" color="black"></a-cylinder>
-                    <a-cylinder position="0 1 0" rotation="45 90 0" radius="0.05" height="4" color="black"></a-cylinder>
-                </a-entity>
+        <a-plane id="floor" position="0 0 0" rotation="-90 0 0" width="100" height="100" src="#blood-floor" repeat="50 50"></a-plane>
+        
+        <!-- Склад мяса -->
+        <a-entity position="-20 0 15">
+            <a-box position="0 1.5 0" width="4" height="3" depth="4" color="#442222">
+                <a-text value="СКЛАД МЯСА" align="center" position="0 2 2.1" color="red"></a-text>
             </a-box>
-            <a-box class="feeder" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Mimic')"></a-box>
+            <a-box class="interactable" id="meat-pile" position="0 0.5 2.5" width="1" height="0.5" depth="1" color="#ff0000" onclick="takeMeat()"></a-box>
         </a-entity>
 
-        <!-- КЛЕТКА 6: Mega Shark (Aquarium) -->
-        <a-entity position="-10 0 10" class="enclosure" data-monster="Shark">
-            <a-box position="0 3 0" width="8" height="6" depth="8" material="color: #0044ff; opacity: 0.2; transparent: true"></a-box>
-            <a-entity id="monster-shark" position="0 3 0">
-                <a-cone rotation="90 0 0" radius-bottom="1" height="4" color="#333">
-                    <!-- 21 глаз -->
-                    <a-sphere position="0.8 1.5 0" radius="0.1" color="yellow"></a-sphere>
-                    <a-sphere position="-0.8 1.5 0" radius="0.1" color="yellow"></a-sphere>
-                </a-cone>
-                <!-- 5 щупалец -->
-                <a-entity position="0 0 -2">
-                    <a-cylinder rotation="0 0 45" radius="0.1" height="3" color="#222" position="1 0 0"></a-cylinder>
-                    <a-cylinder rotation="0 0 -45" radius="0.1" height="3" color="#222" position="-1 0 0"></a-cylinder>
+        <!-- Магазин оружия -->
+        <a-entity position="20 0 15">
+            <a-box position="0 1.5 0" width="6" height="4" depth="2" color="#222244">
+                <a-text value="МАГАЗИН" align="center" position="0 2.5 1.1" color="cyan"></a-text>
+            </a-box>
+            <!-- Прилавки -->
+            <a-box class="interactable" position="-2 0.8 1.2" width="0.8" height="0.4" depth="0.4" color="#555" onclick="buyWeapon('Sword')">
+                <a-text value="MECH $250" scale="0.3 0.3 0.3" position="0 0.3 0" align="center"></a-text>
+            </a-box>
+            <a-box class="interactable" position="0 0.8 1.2" width="0.8" height="0.4" depth="0.4" color="#555" onclick="buyWeapon('Ammo')">
+                <a-text value="AMMO $20" scale="0.3 0.3 0.3" position="0 0.3 0" align="center"></a-text>
+            </a-box>
+            <a-box class="interactable" position="2 0.8 1.2" width="0.8" height="0.4" depth="0.4" color="#33cc33" onclick="sellCorpses()">
+                <a-text value="SELL BODIES" scale="0.3 0.3 0.3" position="0 0.3 0" align="center"></a-text>
+            </a-box>
+        </a-entity>
+
+        <!-- Ловушки -->
+        <a-entity id="traps-container"></a-entity>
+
+        <!-- Зона Лабиринта (скрыта далеко) -->
+        <a-entity id="maze-dimension" position="1000 0 1000" visible="false">
+            <a-light type="ambient" intensity="0.2"></a-light>
+            <a-entity id="maze-walls"></a-entity>
+            <a-box id="maze-exit" position="0 1 0" color="green" scale="2 2 2" onclick="exitMaze()"></a-box>
+        </a-entity>
+
+        <!-- Клетки с монстрами (из прошлой версии) -->
+        <a-entity id="enclosures-container">
+            <!-- Пример клетки 1 -->
+            <a-entity position="-10 0 -5" class="enclosure" data-monster="Flesh">
+                <a-box position="0 2.5 0" width="6" height="5" depth="6" material="opacity: 0.2; wireframe: true"></a-box>
+                <a-box class="interactable" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" onclick="feedMonster('Flesh')"></a-box>
+            </a-entity>
+        </a-entity>
+
+        <!-- Камера и Пояс -->
+        <a-entity id="rig" position="0 0 20">
+            <a-camera>
+                <a-cursor color="#ff0000" raycaster="objects: .interactable"></a-cursor>
+                <!-- Инвентарь на поясе (привязан к камере для простоты управления взглядом) -->
+                <a-entity id="belt" position="0 -0.5 -1">
+                    <a-box id="slot0" position="-0.45 0 0" scale="0.2 0.2 0.05" color="#222" opacity="0.8"></a-box>
+                    <a-box id="slot1" position="-0.15 0 0" scale="0.2 0.2 0.05" color="#222" opacity="0.8"></a-box>
+                    <a-box id="slot2" position="0.15 0 0" scale="0.2 0.2 0.05" color="#222" opacity="0.8"></a-box>
+                    <a-box id="slot3" position="0.45 0 0" scale="0.2 0.2 0.05" color="#222" opacity="0.8"></a-box>
                 </a-entity>
-                <!-- Шипы на хвосте -->
-                <a-cone position="0 0 -2.5" radius-bottom="0.05" height="0.5" color="white" rotation="-90 0 0"></a-cone>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 4.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Shark')"></a-box>
+            </a-camera>
+            <a-entity laser-controls="hand: right" raycaster="objects: .interactable"></a-entity>
         </a-entity>
 
-        <!-- КЛЕТКА 7: Mouth Squid (Aquarium Small) -->
-        <a-entity position="0 0 10" class="enclosure" data-monster="Squid">
-            <a-box position="0 2 0" width="4" height="4" depth="4" material="color: #0044ff; opacity: 0.2; transparent: true"></a-box>
-            <a-entity id="monster-squid" position="0 1.5 0" scale="0.5 0.5 0.5">
-                <a-sphere radius="1" color="#4b0082">
-                    <!-- Рот вместо глаз -->
-                    <a-box position="0 0 0.9" width="0.8" height="0.5" depth="0.2" color="red"></a-box>
-                </a-sphere>
-                <!-- 37 мелких щупалец -->
-                <a-entity id="squid-tentacles"></a-entity>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 2.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Squid')"></a-box>
-        </a-entity>
-
-        <!-- КЛЕТКА 8: Blood Zigzag -->
-        <a-entity position="10 0 10" class="enclosure" data-monster="Blood">
-            <a-box position="0 2.5 0" width="6" height="5" depth="6" material="color: #222; opacity: 0.3; wireframe: true"></a-box>
-            <a-entity id="monster-blood" position="0 0 0">
-                <a-sphere position="0 2 0" radius="0.5" color="#ff0000">
-                    <a-sphere position="0.2 0.1 0.4" radius="0.1" color="white"></a-sphere>
-                    <a-sphere position="-0.2 0.1 0.4" radius="0.1" color="white"></a-sphere>
-                    <!-- Рот как у человека -->
-                    <a-plane position="0 -0.2 0.51" width="0.4" height="0.1" color="pink"></a-plane>
-                </a-sphere>
-                <!-- Зигзагообразные ноги -->
-                <a-entity position="0 1 0">
-                    <a-cylinder position="0.3 -0.5 0" rotation="0 0 20" radius="0.05" height="1" color="#800000"></a-cylinder>
-                    <a-cylinder position="0.5 -1.3 0" rotation="0 0 -40" radius="0.05" height="1" color="#800000"></a-cylinder>
-                </a-entity>
-            </a-entity>
-            <a-box class="feeder" position="0 0.5 3.2" width="1" height="0.5" depth="0.5" color="#ff4444" 
-                   onclick="feedMonster('Blood')"></a-box>
-        </a-entity>
+        <!-- Контейнер для опасных монстров -->
+        <a-entity id="enemy-container"></a-entity>
 
     </a-scene>
 
     <script>
-        // Инициализация игры
-        const MONSTERS = ['Flesh', 'MuTrap', 'Blob', 'Giant', 'Mimic', 'Shark', 'Squid', 'Blood'];
-        let hungerTimer = 300; // 5 минут в секундах
-        let gameActive = true;
-
-        // Генерация 37 щупалец для кальмара
-        const squidContainer = document.querySelector('#squid-tentacles');
-        for (let i = 0; i < 37; i++) {
-            const t = document.createElement('a-cylinder');
-            const angle = (i / 37) * Math.PI * 2;
-            const x = Math.cos(angle) * 0.8;
-            const z = Math.sin(angle) * 0.8;
-            t.setAttribute('position', `${x} -1 ${z}`);
-            t.setAttribute('radius', '0.02');
-            t.setAttribute('height', '1.5');
-            t.setAttribute('color', '#4b0082');
-            t.setAttribute('rotation', `${Math.random()*20} 0 ${Math.random()*20}`);
-            squidContainer.appendChild(t);
-        }
-
-        // Функция кормления
-        window.feedMonster = function(name) {
-            if (!gameActive) return;
-            console.log("Кормление монстра: " + name);
-            hungerTimer = 300; // Сброс общего таймера зоопарка
-            document.getElementById('status').innerText = `Статус: ${name} наелся.`;
-            document.getElementById('status').className = '';
-            
-            // Визуальный эффект кормления
-            const flash = document.createElement('a-light');
-            flash.setAttribute('type', 'point');
-            flash.setAttribute('color', 'green');
-            flash.setAttribute('intensity', '2');
-            flash.setAttribute('position', '0 2 15');
-            document.querySelector('a-scene').appendChild(flash);
-            setTimeout(() => flash.remove(), 500);
+        // Данные игры
+        const player = {
+            hp: 100,
+            money: 0,
+            inventory: ['Dagger', null, null, null],
+            corpses: 0,
+            inMaze: false,
+            mazeTimer: 300
         };
 
-        // Логика побега
-        function monsterEscape() {
-            gameActive = false;
-            document.getElementById('status').innerText = "КАТАСТРОФА: МОНСТРЫ СБЕЖАЛИ!";
-            document.getElementById('status').className = 'danger';
+        const weapons = {
+            'Dagger': { damage: 20, price: 0, type: 'melee', durability: 50 },
+            'Sword': { damage: 35, price: 250, type: 'melee', durability: 50 },
+            'Katana': { damage: 45, price: 350, type: 'melee', durability: 50 },
+            'Saber': { damage: 55, price: 450, type: 'melee', durability: 50 },
+            'HeavySword': { damage: 75, price: 550, type: 'melee', durability: 50 },
+            'DoubleShotgun': { damage: 10, price: 355, type: 'ranged', ammo: 8 },
+            'Beretta': { damage: 7, price: 250, type: 'ranged', ammo: 8 },
+            'Shotgun': { damage: 25, price: 700, type: 'ranged', ammo: 8 },
+            'Meat': { type: 'item' }
+        };
+
+        let hungerTimer = 300;
+        let waveTimer = 360; 
+        const scene = document.querySelector('a-scene');
+
+        // Инициализация пояса
+        function updateBeltUI() {
+            for (let i = 0; i < 4; i++) {
+                const slot = document.getElementById(`slot${i}`);
+                const item = player.inventory[i];
+                slot.setAttribute('color', item ? '#444' : '#222');
+                // Визуализация названия
+                let label = slot.querySelector('.label');
+                if (!label) {
+                    label = document.createElement('a-text');
+                    label.setAttribute('class', 'label');
+                    label.setAttribute('align', 'center');
+                    label.setAttribute('scale', '0.1 0.1 0.1');
+                    label.setAttribute('position', '0 0 0.1');
+                    slot.appendChild(label);
+                }
+                label.setAttribute('value', item || 'EMPTY');
+            }
+        }
+
+        // Поднять мясо
+        window.takeMeat = function() {
+            addToInventory('Meat');
+        };
+
+        function addToInventory(item) {
+            let placed = false;
+            for (let i = 0; i < 4; i++) {
+                if (player.inventory[i] === null) {
+                    player.inventory[i] = item;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                console.log("Пояс переполнен! Предмет выброшен.");
+                // Логика выброса на пол
+            }
+            updateBeltUI();
+        }
+
+        // Покупка оружия
+        window.buyWeapon = function(type) {
+            if (type === 'Ammo') {
+                if (player.money >= 20) {
+                    player.money -= 20;
+                    // Ищем первое дальнобойное в инвентаре
+                    for(let i=0; i<4; i++) {
+                        if (player.inventory[i] && weapons[player.inventory[i]].type === 'ranged') {
+                            weapons[player.inventory[i]].ammo += 8;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                let w = weapons[type];
+                if (player.money >= w.price) {
+                    player.money -= w.price;
+                    addToInventory(type);
+                }
+            }
+            updateHUD();
+        }
+
+        // Продажа трупов
+        window.sellCorpses = function() {
+            player.money += player.corpses * 50;
+            player.corpses = 0;
+            updateHUD();
+        }
+
+        // Кормление
+        window.feedMonster = function(name) {
+            const idx = player.inventory.indexOf('Meat');
+            if (idx !== -1) {
+                player.inventory[idx] = null;
+                player.money += 5;
+                hungerTimer = 300;
+                updateBeltUI();
+                updateHUD();
+                document.getElementById('status').innerText = `Покормлен: ${name}`;
+            } else {
+                document.getElementById('status').innerText = "НУЖНО МЯСО СО СКЛАДА!";
+            }
+        };
+
+        // Система Рейдов
+        function spawnRaid() {
+            const count = Math.floor(Math.random() * 3) + 3; // 3-5
+            const types = [
+                {n: 'Zombie', hp: 40}, {n: 'ArmorZombie', hp: 110}, {n: 'Titan', hp: 150},
+                {n: 'Hound', hp: 100}, {n: 'Imp', hp: 10}, {n: 'Burned', hp: 60}
+            ];
+
+            for (let i = 0; i < count; i++) {
+                const t = types[Math.floor(Math.random() * types.length)];
+                const enemy = document.createElement('a-entity');
+                enemy.setAttribute('class', 'interactable enemy');
+                enemy.setAttribute('position', `${Math.random()*20 - 10} 1.5 -20`);
+                enemy.setAttribute('geometry', 'primitive: capsule; radius: 0.5; length: 1');
+                enemy.setAttribute('material', 'color', '#330000');
+                enemy.dataset.hp = t.hp;
+                enemy.dataset.name = t.n;
+                
+                enemy.addEventListener('click', () => attackEnemy(enemy));
+                document.getElementById('enemy-container').appendChild(enemy);
+            }
+            waveTimer = Math.floor(Math.random() * 60) + 360; // 6-7 мин
+        }
+
+        function attackEnemy(el) {
+            // Берем первое оружие из инвентаря
+            let weaponName = player.inventory.find(i => i && weapons[i].damage);
+            if (!weaponName) return;
+
+            let w = weapons[weaponName];
             
-            // Анимация нападения (двигаем монстров к игроку)
-            MONSTERS.forEach(id => {
-                const entity = document.querySelector(`#monster-${id.toLowerCase()}`);
-                if (entity) {
-                    entity.setAttribute('animation', {
-                        property: 'position',
-                        to: '0 0 15',
-                        dur: 3000,
-                        easing: 'linear'
-                    });
+            if (w.type === 'melee') {
+                if (w.durability <= 0) {
+                    document.getElementById('status').innerText = "ОРУЖИЕ СЛОМАНО!";
+                    player.inventory[player.inventory.indexOf(weaponName)] = null;
+                    updateBeltUI();
+                    return;
+                }
+                w.durability--;
+            } else if (w.type === 'ranged') {
+                if (w.ammo <= 0) return;
+                w.ammo--;
+            }
+
+            el.dataset.hp -= w.damage;
+            if (el.dataset.hp <= 0) {
+                player.corpses++;
+                el.remove();
+            }
+        }
+
+        // Ловушка Лабиринт
+        function initTraps() {
+            for (let i = 0; i < 5; i++) {
+                const trap = document.createElement('a-entity');
+                trap.setAttribute('geometry', 'primitive: box');
+                trap.setAttribute('material', 'src: #stone-tex');
+                trap.setAttribute('position', `${Math.random()*40 - 20} 0.1 ${Math.random()*40 - 20}`);
+                trap.setAttribute('class', 'interactable');
+                trap.addEventListener('click', () => enterMaze());
+                document.getElementById('traps-container').appendChild(trap);
+            }
+        }
+
+        function enterMaze() {
+            player.inMaze = true;
+            player.mazeTimer = 300;
+            document.getElementById('maze-dimension').setAttribute('visible', 'true');
+            document.getElementById('rig').setAttribute('position', '1000 0 1000');
+            generateRandomMaze();
+        }
+
+        function exitMaze() {
+            player.inMaze = false;
+            document.getElementById('maze-dimension').setAttribute('visible', 'false');
+            document.getElementById('rig').setAttribute('position', '0 0 15');
+        }
+
+        function generateRandomMaze() {
+            const container = document.getElementById('maze-walls');
+            container.innerHTML = '';
+            for(let i=0; i<20; i++) {
+                const wall = document.createElement('a-box');
+                wall.setAttribute('position', `${(Math.random()-0.5)*20} 2 ${(Math.random()-0.5)*20}`);
+                wall.setAttribute('scale', '1 4 5');
+                wall.setAttribute('color', '#300');
+                container.appendChild(wall);
+            }
+            document.getElementById('maze-exit').setAttribute('position', `${(Math.random()-0.5)*15} 1 ${(Math.random()-0.5)*15}`);
+        }
+
+        function updateHUD() {
+            document.getElementById('hp-val').innerText = player.hp;
+            document.getElementById('money-val').innerText = player.money;
+        }
+
+        // Главный цикл
+        setInterval(() => {
+            // Таймеры
+            if (hungerTimer > 0) hungerTimer--;
+            if (waveTimer > 0) waveTimer--;
+            else spawnRaid();
+
+            // Лабиринт
+            if (player.inMaze) {
+                player.mazeTimer--;
+                if (player.mazeTimer <= 0) {
+                    die();
+                }
+            }
+
+            // Рендеринг времени
+            const h_min = Math.floor(hungerTimer / 60);
+            const h_sec = hungerTimer % 60;
+            document.getElementById('hunger-time').innerText = `${h_min}:${h_sec.toString().padStart(2,'0')}`;
+
+            const w_min = Math.floor(waveTimer / 60);
+            const w_sec = waveTimer % 60;
+            document.getElementById('wave-time').innerText = `${w_min}:${w_sec.toString().padStart(2,'0')}`;
+
+            // Урон от монстров
+            const enemies = document.querySelectorAll('.enemy');
+            enemies.forEach(e => {
+                // Очень упрощенная проверка дистанции
+                const pos = e.getAttribute('position');
+                const playerPos = document.getElementById('rig').getAttribute('position');
+                const dist = Math.sqrt((pos.x-playerPos.x)**2 + (pos.z-playerPos.z)**2);
+                if (dist < 2) {
+                    player.hp -= (Math.random() * 5 + 5) / 10; // Урон в тик
+                    updateHUD();
+                    if (player.hp <= 0) die();
                 }
             });
 
-            // Красный свет тревоги
-            const alarm = document.createElement('a-light');
-            alarm.setAttribute('type', 'ambient');
-            alarm.setAttribute('color', 'red');
-            alarm.setAttribute('intensity', '2');
-            document.querySelector('a-scene').appendChild(alarm);
-        }
-
-        // Таймер обратного отсчета
-        setInterval(() => {
-            if (!gameActive) return;
-            
-            hungerTimer--;
-            
-            const mins = Math.floor(hungerTimer / 60);
-            const secs = hungerTimer % 60;
-            document.getElementById('time-left').innerText = 
-                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-            if (hungerTimer <= 60) {
-                document.getElementById('status').innerText = "ВНИМАНИЕ: МОНСТРЫ ГОЛОДНЫ!";
-                document.getElementById('status').className = 'warning';
-            }
-
-            if (hungerTimer <= 0) {
-                monsterEscape();
-            }
         }, 1000);
 
-        // Специфическое поведение для Мимика (Клетка 5)
-        document.querySelector('#monster-mimic').addEventListener('mouseenter', () => {
-            document.querySelector('#mimic-tentacles').setAttribute('visible', 'true');
-        });
-        document.querySelector('#monster-mimic').addEventListener('mouseleave', () => {
-            document.querySelector('#mimic-tentacles').setAttribute('visible', 'false');
-        });
+        function die() {
+            player.hp = 100;
+            player.money = 0;
+            player.corpses = 0;
+            player.inventory = ['Dagger', null, null, null];
+            exitMaze();
+            updateHUD();
+            updateBeltUI();
+            document.getElementById('status').innerText = "ВЫ ПОГИБЛИ И ПОТЕРЯЛИ ВСЁ!";
+        }
+
+        // Зарплата каждые 5 минут
+        setInterval(() => {
+            if (!player.inMaze) {
+                player.money += 100; // Базовая зарплата
+                updateHUD();
+            }
+        }, 300000);
+
+        window.onload = () => {
+            initTraps();
+            updateBeltUI();
+            updateHUD();
+        };
 
     </script>
 </body>
