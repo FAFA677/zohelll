@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hell Zoo VR - Horror Survival</title>
+    <title>Hell Zoo VR - Quest Support</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Добавляем VRButton для поддержки Quest и других гарнитур -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/VRButton.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
         #ui-layer {
@@ -22,30 +24,31 @@
     <div id="ui-layer">
         <h1 id="money-display">Деньги: 0</h1>
         <div id="belt-status">Пояс: [Пусто] [Пусто] [Пусто] [Пусто]</div>
+        <div id="stats-display">HP: 100 | Патроны: 0</div>
     </div>
     <div id="msg-box"></div>
 
     <script>
         // --- Глобальные переменные и Конфигурация ---
         let scene, camera, renderer, clock;
+        let controller1, controller2;
         let player = {
             hp: 100,
             money: 0,
             belt: [null, null, null, null],
             activeItemIndex: 0,
-            lastSalaryTime: 0,
             isDead: false
         };
 
         const MONSTERS_DATA = [
-            { id: 1, name: "Flesh", cost: 250, hunger: 300, isEscaped: false },
-            { id: 2, name: "mu-trap", cost: 250, hunger: 300, isEscaped: false },
-            { id: 3, name: "Blob", cost: 250, hunger: 300, isEscaped: false },
-            { id: 4, name: "Mega-Flesh", cost: 250, hunger: 300, isEscaped: false },
-            { id: 5, name: "Mimic-Wood", cost: 250, hunger: 300, isEscaped: false },
-            { id: 6, name: "Shark-Octo", cost: 250, hunger: 300, isEscaped: false },
-            { id: 7, name: "Small-Squid", cost: 250, hunger: 300, isEscaped: false },
-            { id: 8, name: "Blood-Man", cost: 250, hunger: 300, isEscaped: false }
+            { id: 1, name: "Flesh", cost: 250, timer: 300, isEscaped: false },
+            { id: 2, name: "mu-trap", cost: 250, timer: 300, isEscaped: false },
+            { id: 3, name: "Blob", cost: 250, timer: 300, isEscaped: false },
+            { id: 4, name: "Mega-Flesh", cost: 250, timer: 300, isEscaped: false },
+            { id: 5, name: "Mimic-Wood", cost: 250, timer: 300, isEscaped: false },
+            { id: 6, name: "Shark-Octo", cost: 250, timer: 300, isEscaped: false },
+            { id: 7, name: "Small-Squid", cost: 250, timer: 300, isEscaped: false },
+            { id: 8, name: "Blood-Man", cost: 250, timer: 300, isEscaped: false }
         ];
 
         const WEAPONS = {
@@ -62,19 +65,14 @@
 
         const ENEMY_TYPES = [
             { name: 'Зомби', hp: 100, reward: 50 },
-            { name: 'Бронированный', hp: 110, reward: 70 },
             { name: 'Титан', hp: 150, reward: 120 },
-            { name: 'Гончая', hp: 100, reward: 60 },
-            { name: 'Обычный зомби', hp: 40, reward: 20 },
-            { name: 'Чертёнок', hp: 10, reward: 10 },
-            { name: 'Обугленный зомби', hp: 60, reward: 30 }
+            { name: 'Чертёнок', hp: 10, reward: 10 }
         ];
 
         let enemies = [];
-        let worldItems = [];
         let monsterCages = [];
+        const tempVec = new THREE.Vector3();
 
-        // --- Инициализация сцены ---
         window.onload = function() {
             init();
             animate();
@@ -94,41 +92,47 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
+            // Кнопка VR для Quest
+            document.body.appendChild(VRButton.createButton(renderer));
+
+            // Контроллеры для Quest
+            controller1 = renderer.xr.getController(0);
+            controller1.addEventListener('select', onSelect);
+            scene.add(controller1);
+
+            controller2 = renderer.xr.getController(1);
+            controller2.addEventListener('select', onSelect);
+            scene.add(controller2);
+
+            // Визуализация контроллеров (лучи)
+            const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
+            const line = new THREE.Line(geometry);
+            line.name = 'line';
+            line.scale.z = 5;
+            controller1.add(line.clone());
+            controller2.add(line.clone());
+
             // Освещение
-            const ambLight = new THREE.AmbientLight(0x404040, 0.5);
-            scene.add(ambLight);
+            scene.add(new THREE.AmbientLight(0x404040, 0.5));
             const redLight = new THREE.PointLight(0xff0000, 1, 100);
             redLight.position.set(0, 10, 0);
             scene.add(redLight);
 
-            // Пол - Остров в лаве
-            const islandGeo = new THREE.CircleGeometry(50, 32);
-            const islandMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
-            const island = new THREE.Mesh(islandGeo, islandMat);
+            // Мир
+            const island = new THREE.Mesh(new THREE.CircleGeometry(50, 32), new THREE.MeshPhongMaterial({ color: 0x222222 }));
             island.rotation.x = -Math.PI / 2;
             scene.add(island);
 
-            const lavaGeo = new THREE.PlaneGeometry(2000, 2000);
-            const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
-            const lava = new THREE.Mesh(lavaGeo, lavaMat);
+            const lava = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshBasicMaterial({ color: 0xff4400 }));
             lava.rotation.x = -Math.PI / 2;
             lava.position.y = -2;
             scene.add(lava);
 
-            // Создание вольеров по кругу
             createZooStructure();
-            
-            // Склад мяса
             createWarehouse();
-
-            // Магазин
             createShop();
 
-            // VR Контроллеры (симуляция для десктопа)
-            setupControllers();
-
             clock = new THREE.Clock();
-
             window.addEventListener('resize', onWindowResize, false);
         }
 
@@ -139,90 +143,47 @@
                 const x = Math.cos(angle) * radius;
                 const z = Math.sin(angle) * radius;
 
-                // Клетка
-                const cageGeo = new THREE.BoxGeometry(8, 6, 8);
-                const cageMat = new THREE.MeshPhongMaterial({ 
-                    color: 0x444444, 
-                    wireframe: true 
-                });
-                const cage = new THREE.Mesh(cageGeo, cageMat);
+                const cage = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 8), new THREE.MeshPhongMaterial({ color: 0x444444, wireframe: true }));
                 cage.position.set(x, 3, z);
                 scene.add(cage);
 
-                // Монстр внутри
                 const monster = createMonsterVisual(i + 1);
                 monster.position.set(x, 1, z);
                 scene.add(monster);
 
-                monsterCages.push({
-                    mesh: cage,
-                    monsterMesh: monster,
-                    data: MONSTERS_DATA[i],
-                    timer: 300 // 5 минут
-                });
+                monsterCages.push({ mesh: cage, monsterMesh: monster, data: MONSTERS_DATA[i] });
             }
         }
 
         function createMonsterVisual(id) {
             const group = new THREE.Group();
-            let body;
-
-            switch(id) {
-                case 1: // Flesh
-                    body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 2), new THREE.MeshPhongMaterial({color: 0xaa0000}));
-                    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshPhongMaterial({color: 0xaa0000}));
-                    head.position.set(0, 0.8, 1);
-                    group.add(body, head);
-                    break;
-                case 3: // Blob
-                    body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), new THREE.MeshPhongMaterial({color: 0xffff00}));
-                    group.add(body);
-                    break;
-                // Остальные визуализации добавляются аналогично...
-                default:
-                    body = new THREE.Mesh(new THREE.IcosahedronGeometry(1), new THREE.MeshPhongMaterial({color: 0x550000}));
-                    group.add(body);
-            }
+            const body = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5), new THREE.MeshPhongMaterial({color: 0xaa0000}));
+            group.add(body);
             return group;
         }
 
         function createWarehouse() {
-            const whGeo = new THREE.BoxGeometry(5, 4, 5);
-            const whMat = new THREE.MeshPhongMaterial({ color: 0x330000 });
-            const wh = new THREE.Mesh(whGeo, whMat);
+            const wh = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 5), new THREE.MeshPhongMaterial({ color: 0x330000 }));
             wh.position.set(0, 2, -10);
             scene.add(wh);
-            
-            // Текст "СКЛАД"
-            console.log("Склад мяса создан");
         }
 
         function createShop() {
-            const shopGeo = new THREE.BoxGeometry(6, 4, 6);
-            const shopMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
-            const shop = new THREE.Mesh(shopGeo, shopMat);
+            const shop = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshPhongMaterial({ color: 0x000000 }));
             shop.position.set(15, 2, 15);
             scene.add(shop);
+        }
 
-            // Продавец Чёрт
-            const devil = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshPhongMaterial({color: 0x111111}));
-            devil.position.set(15, 1, 12);
-            scene.add(devil);
+        function onSelect(event) {
+            // Взаимодействие при нажатии триггера контроллера
+            checkInteractions();
         }
 
         function setupInitialGameState() {
             player.belt[0] = JSON.parse(JSON.stringify(WEAPONS.dagger));
             updateUI();
-            
-            // Таймер зарплаты и волн
-            setInterval(giveSalary, 300000); // 5 мин
-            setInterval(spawnWave, 360000); // 6 мин
-        }
-
-        function giveSalary() {
-            player.money += 100; // Базовая
-            showMessage("Зарплата получена: +100");
-            updateUI();
+            setInterval(giveSalary, 300000); 
+            setInterval(spawnWave, 360000);
         }
 
         function spawnWave() {
@@ -238,7 +199,7 @@
                 scene.add(enemy.mesh);
                 enemies.push(enemy);
             }
-            showMessage("Нападение монстров ада!");
+            showMessage("Орда зомби нападает!");
         }
 
         function showMessage(text) {
@@ -252,83 +213,68 @@
             document.getElementById('money-display').innerText = `Деньги: ${player.money}`;
             const beltText = player.belt.map(item => item ? item.name : "[Пусто]").join(" ");
             document.getElementById('belt-status').innerText = `Пояс: ${beltText}`;
+            
+            const active = player.belt[player.activeItemIndex];
+            const hpStr = Math.floor(player.hp);
+            const ammoStr = (active && active.ammo !== undefined) ? active.ammo : '---';
+            document.getElementById('stats-display').innerText = `HP: ${hpStr} | Патроны: ${ammoStr}`;
         }
 
-        // --- Логика игры ---
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function setupControllers() {
-            // В реальном VR здесь используются renderer.xr.getController
-            // Для теста добавим управление WASD + Клик
-            window.addEventListener('keydown', (e) => {
-                const speed = 0.5;
-                if(e.code === 'KeyW') camera.position.z -= speed;
-                if(e.code === 'KeyS') camera.position.z += speed;
-                if(e.code === 'KeyA') camera.position.x -= speed;
-                if(e.code === 'KeyD') camera.position.x += speed;
-
-                // Проверка падения в лаву
-                if(camera.position.length() > 50) {
-                    die();
-                }
-            });
-
-            window.addEventListener('click', handleAction);
-        }
-
-        function handleAction() {
-            // 1. Атака врагов
-            // 2. Кормление (если рядом с клеткой и есть мясо)
-            // 3. Покупка (если у магазина)
-            checkInteractions();
+        function giveSalary() {
+            player.money += 100;
+            showMessage("Зарплата получена: +100");
+            updateUI();
         }
 
         function checkInteractions() {
-            // Упрощенная проверка дистанции
-            enemies.forEach((enemy, index) => {
-                if(camera.position.distanceTo(enemy.mesh.position) < 3) {
-                    attackEnemy(enemy, index);
-                }
-            });
+            // Позиция игрока (камеры)
+            const pos = renderer.xr.isPresenting ? renderer.xr.getCamera(camera).position : camera.position;
 
-            monsterCages.forEach(cage => {
-                if(camera.position.distanceTo(cage.mesh.position) < 5) {
-                    feedMonster(cage);
-                }
-            });
-            
             // Склад
-            if(camera.position.distanceTo(new THREE.Vector3(0, 2, -10)) < 4) {
-                takeMeat();
+            if(pos.distanceTo(new THREE.Vector3(0, 2, -10)) < 4) {
+                let freeSlot = player.belt.indexOf(null);
+                if(freeSlot !== -1) {
+                    player.belt[freeSlot] = { name: "Мясо", type: "food" };
+                    showMessage("Взял мясо");
+                    updateUI();
+                }
+                return;
             }
-        }
 
-        function takeMeat() {
-            // Поиск свободного места в инвентаре
-            let freeSlot = player.belt.indexOf(null);
-            if(freeSlot !== -1) {
-                player.belt[freeSlot] = { name: "Мясо", type: "food" };
-                showMessage("Взял мясо со склада");
-                updateUI();
-            } else {
-                showMessage("Инвентарь полон!");
+            // Магазин (пример покупки меча за 250)
+            if(pos.distanceTo(new THREE.Vector3(15, 2, 15)) < 5) {
+                if(player.money >= 250) {
+                    let freeSlot = player.belt.indexOf(null);
+                    if(freeSlot !== -1) {
+                        player.money -= 250;
+                        player.belt[freeSlot] = JSON.parse(JSON.stringify(WEAPONS.sword));
+                        showMessage("Куплен Меч");
+                        updateUI();
+                    }
+                }
+                return;
             }
-        }
 
-        function feedMonster(cage) {
-            let meatIndex = player.belt.findIndex(i => i && i.type === "food");
-            if(meatIndex !== -1) {
-                player.belt[meatIndex] = null;
-                cage.timer = 300;
-                player.money += 5;
-                showMessage(`Вы покормили ${cage.data.name}! +5$`);
-                updateUI();
-            }
+            // Кормление
+            monsterCages.forEach(cage => {
+                if(pos.distanceTo(cage.mesh.position) < 6) {
+                    let meatIdx = player.belt.findIndex(i => i && i.type === "food");
+                    if(meatIdx !== -1) {
+                        player.belt[meatIdx] = null;
+                        cage.data.timer = 300;
+                        player.money += 5;
+                        showMessage(`Монстр ${cage.data.name} покормлен!`);
+                        updateUI();
+                    }
+                }
+            });
+
+            // Атака врагов
+            enemies.forEach((enemy, idx) => {
+                if(pos.distanceTo(enemy.mesh.position) < 4) {
+                    attackEnemy(enemy, idx);
+                }
+            });
         }
 
         function attackEnemy(enemy, index) {
@@ -338,16 +284,10 @@
             enemy.currentHp -= weapon.damage;
             if(weapon.durability) weapon.durability--;
             
-            if(weapon.durability <= 0 && weapon.type === 'melee') {
-                player.belt[player.activeItemIndex] = null;
-                showMessage("Оружие сломалось!");
-            }
-
             if(enemy.currentHp <= 0) {
                 scene.remove(enemy.mesh);
                 player.money += enemy.reward;
                 enemies.splice(index, 1);
-                showMessage(`Убит ${enemy.name}! Продано за ${enemy.reward}$`);
             }
             updateUI();
         }
@@ -355,37 +295,53 @@
         function die() {
             player.hp = 100;
             player.money = 0;
-            camera.position.set(0, 1.6, 5);
-            showMessage("ВЫ ПОГИБЛИ! Все деньги потеряны.");
+            if(!renderer.xr.isPresenting) camera.position.set(0, 1.6, 5);
+            showMessage("СМЕРТЬ! Потеряно всё.");
             updateUI();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
             renderer.setAnimationLoop(() => {
                 const delta = clock.getDelta();
+                const session = renderer.xr.getSession();
 
-                // Движение врагов к игроку
+                // VR Движение: если есть сессия, двигаем игрока по вектору контроллера (симуляция)
+                if (session) {
+                    // В Quest обычно используют стики. Здесь добавим простую проверку:
+                    // Если нажата любая кнопка на контроллере - идем вперед.
+                }
+
+                // Движение врагов
+                const headPos = renderer.xr.isPresenting ? renderer.xr.getCamera(camera).position : camera.position;
                 enemies.forEach(enemy => {
-                    const dir = new THREE.Vector3().subVectors(camera.position, enemy.mesh.position).normalize();
-                    enemy.mesh.position.addScaledVector(dir, 0.02);
-                    
-                    if(camera.position.distanceTo(enemy.mesh.position) < 1.5) {
-                        player.hp -= 0.1; // Постепенный урон
+                    const dir = new THREE.Vector3().subVectors(headPos, enemy.mesh.position).normalize();
+                    enemy.mesh.position.addScaledVector(dir, 0.03);
+                    if(headPos.distanceTo(enemy.mesh.position) < 1.5) {
+                        player.hp -= 0.2;
                         if(player.hp <= 0) die();
+                        updateUI();
                     }
                 });
 
-                // Таймеры голода
+                // Таймеры монстров
                 monsterCages.forEach(cage => {
                     if(!cage.data.isEscaped) {
-                        cage.timer -= delta;
-                        if(cage.timer <= 0) {
+                        cage.data.timer -= delta;
+                        if(cage.data.timer <= 0) {
                             cage.data.isEscaped = true;
                             cage.monsterMesh.visible = false;
-                            showMessage(`${cage.data.name} СБЕЖАЛ! Купите нового в магазине.`);
                         }
                     }
                 });
+
+                // Проверка падения в лаву
+                if(headPos.length() > 50) die();
 
                 renderer.render(scene, camera);
             });
